@@ -1,8 +1,8 @@
-package com.onecar.common.advice;
+package com.kftc.common.advice;
 
-import com.onecar.common.dto.BasicResponse;
-import com.onecar.common.exception.BusinessException;
-import com.onecar.common.exception.ErrorCode;
+import com.kftc.common.dto.BasicResponse;
+import com.kftc.common.exception.BusinessException;
+import com.kftc.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

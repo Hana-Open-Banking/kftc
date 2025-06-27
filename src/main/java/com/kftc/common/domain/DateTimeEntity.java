@@ -1,4 +1,4 @@
-package com.onecar.common.domain;
+package com.kftc.common.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

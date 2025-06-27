@@ -1,4 +1,4 @@
-package com.onecar.common.exception;
+package com.kftc.common.exception;
 
 import lombok.Getter;
 

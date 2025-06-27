@@ -1,4 +1,4 @@
-package com.onecar.common.config;
+package com.kftc.common.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

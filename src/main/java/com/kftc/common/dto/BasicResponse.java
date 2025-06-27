@@ -1,6 +1,6 @@
-package com.onecar.common.dto;
+package com.kftc.common.dto;
 
-import com.onecar.common.exception.ErrorCode;
+import com.kftc.common.exception.ErrorCode;
 import lombok.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

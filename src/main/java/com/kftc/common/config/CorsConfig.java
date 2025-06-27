@@ -1,4 +1,4 @@
-package com.onecar.common.config;
+package com.kftc.common.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
