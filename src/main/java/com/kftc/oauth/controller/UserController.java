@@ -4,6 +4,7 @@ import com.kftc.oauth.dto.UserInfoResponse;
 import com.kftc.oauth.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +20,12 @@ public class UserController {
     
     private final UserService userService;
     
-    @Operation(summary = "사용자정보조회 API", description = "사용자의 기본 정보를 조회하는 API입니다.")
+    @Operation(summary = "사용자정보조회 API", 
+               description = "사용자의 기본 정보를 조회하는 API입니다.",
+               security = @SecurityRequirement(name = "BearerAuth"))
     @PostMapping("/user/me")
     public ResponseEntity<UserInfoResponse> getUserInfo(
-            @Parameter(description = "Bearer 토큰", required = true) 
+            @Parameter(description = "Bearer 토큰", required = true, hidden = true) 
             @RequestHeader("Authorization") String authorization,
             
             @Parameter(description = "사용자일련번호", required = true) 
