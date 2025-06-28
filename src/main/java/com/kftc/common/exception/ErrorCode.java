@@ -16,7 +16,16 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(404, "M_001", "존재하지 않는 사용자입니다."),
     DUPLICATED_USERNAME(409, "M_002", "이미 존재하는 아이디입니다."),
     INVALID_PASSWORD(401, "M_003", "비밀번호가 올바르지 않습니다."),
-    INVALID_TOKEN(401, "M_004", "토큰이 만료되었습니다.")
+    INVALID_TOKEN(401, "M_004", "토큰이 만료되었습니다."),
+    
+    // OAuth 관련 에러 코드
+    INVALID_VALUE(400, "O_001", "유효하지 않은 값입니다."),
+    OAUTH_CLIENT_NOT_FOUND(404, "O_002", "OAuth 클라이언트를 찾을 수 없습니다."),
+    OAUTH_CLIENT_AUTHENTICATION_FAILED(401, "O_003", "OAuth 클라이언트 인증에 실패했습니다."),
+    INVALID_AUTHORIZATION_CODE(400, "O_004", "유효하지 않은 인증 코드입니다."),
+    EXPIRED_AUTHORIZATION_CODE(400, "O_005", "만료된 인증 코드입니다."),
+    INVALID_REFRESH_TOKEN(400, "O_006", "유효하지 않은 리프레시 토큰입니다."),
+    EXPIRED_REFRESH_TOKEN(400, "O_007", "만료된 리프레시 토큰입니다.")
     ;
 
     private final int status;
