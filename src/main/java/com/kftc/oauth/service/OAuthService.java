@@ -6,7 +6,7 @@ import com.kftc.oauth.domain.AuthorizationCode;
 import com.kftc.oauth.domain.OAuthClient;
 import com.kftc.oauth.domain.OAuthToken;
 import com.kftc.oauth.dto.AuthorizeRequest;
-import com.kftc.oauth.dto.RevokeResponse;
+
 import com.kftc.oauth.dto.TokenRequest;
 import com.kftc.oauth.dto.TokenResponse;
 import com.kftc.oauth.repository.AuthorizationCodeRepository;
@@ -188,63 +188,7 @@ public class OAuthService {
         log.info("토큰이 무효화되었습니다: {}", accessToken.substring(0, 10) + "...");
     }
     
-    /**
-     * 토큰 폐기 (오픈뱅킹 명세서에 따른 revoke API)
-     */
-    public RevokeResponse revokeTokenByCredentials(String clientId, String clientSecret, String accessToken) {
-        try {
-            // 클라이언트 인증
-            OAuthClient client = authenticateClient(clientId, clientSecret);
-            
-            // 토큰 검증 및 조회
-            OAuthToken token = tokenRepository.findByAccessTokenAndIsRevokedFalse(accessToken)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "유효하지 않은 Access Token입니다."));
-            
-            // 클라이언트 ID 일치 확인
-            if (!token.getClientId().equals(clientId)) {
-                throw new BusinessException(ErrorCode.INVALID_VALUE, "토큰의 클라이언트 ID가 일치하지 않습니다.");
-            }
-            
-            // 토큰 무효화
-            String refreshToken = token.getRefreshToken();
-            token.revoke();
-            
-            log.info("토큰 폐기 완료: clientId={}, accessToken={}", clientId, accessToken.substring(0, 10) + "...");
-            
-            // 성공 응답 생성
-            return RevokeResponse.builder()
-                    .rspCode("O0000")
-                    .rspMessage("정상처리")
-                    .clientId(clientId)
-                    .clientSecret(clientSecret)
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .build();
-                    
-        } catch (BusinessException e) {
-            log.error("토큰 폐기 실패: {}", e.getMessage());
-            // 에러 응답 생성
-            return RevokeResponse.builder()
-                    .rspCode("O0001")
-                    .rspMessage("인증요청 거부-인증 파라미터 오류 (30002011)")
-                    .clientId(clientId)
-                    .clientSecret(clientSecret)
-                    .accessToken(accessToken)
-                    .refreshToken(null)
-                    .build();
-        } catch (Exception e) {
-            log.error("토큰 폐기 중 예상치 못한 오류: {}", e.getMessage());
-            // 에러 응답 생성
-            return RevokeResponse.builder()
-                    .rspCode("O0001")
-                    .rspMessage("인증요청 거부-인증 파라미터 오류 (30002011)")
-                    .clientId(clientId)
-                    .clientSecret(clientSecret)
-                    .accessToken(accessToken)
-                    .refreshToken(null)
-                    .build();
-        }
-    }
+
     
     /**
      * 서비스등록확인 API (3-legged) 처리
