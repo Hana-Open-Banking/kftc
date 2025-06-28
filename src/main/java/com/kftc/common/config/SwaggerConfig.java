@@ -33,9 +33,9 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI springOpenAPI() {
         Info info = new Info()
-                .title("하나원카 API")
-                .description("하나원카 API 명세서입니다.")
-                .version("v0.0.1");
+                .title("KFTC 오픈뱅킹 OAuth API")
+                .description("금융결제원 오픈뱅킹 OAuth 2.0 인증 서버 API")
+                .version("v1.0.0");
 
         List<Server> servers = List.of(new Server().url(serverUrl));
 
