@@ -2,6 +2,7 @@ package com.kftc.oauth.service;
 
 import com.kftc.common.exception.BusinessException;
 import com.kftc.common.exception.ErrorCode;
+import com.kftc.oauth.domain.User;
 import com.kftc.oauth.dto.UserInfoResponse;
 import com.kftc.oauth.repository.OAuthTokenRepository;
 import com.kftc.oauth.util.JwtTokenProvider;
@@ -21,6 +22,7 @@ public class UserService {
     
     private final OAuthTokenRepository tokenRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserManagementService userManagementService;
     
     /**
      * 사용자 정보 조회
@@ -56,21 +58,25 @@ public class UserService {
         
         log.info("사용자 정보 조회 요청: userSeqNo={}, tokenUserId={}", userSeqNo, tokenUserId);
         
+        // 실제 사용자 정보 조회
+        User user = userManagementService.getActiveUser(userSeqNo);
+        log.info("DB에서 사용자 정보 조회 성공: userSeqNo={}, userName={}", userSeqNo, user.getUserName());
+        
         // 현재 시간 생성
         String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String apiTranId = generateApiTranId();
         
-        // 사용자 정보 생성 (실제로는 사용자 DB에서 조회해야 함)
+        // 사용자 정보 생성 (실제 DB 데이터 사용)
         UserInfoResponse.UserInfo userInfo = UserInfoResponse.UserInfo.builder()
-                .userSeqNo(userSeqNo)
-                .userCi("s1V7bwE4pxqV_K5oy4EdEOGUHUIpv7_2l4kE8l7FOC4HCi-7TUtT9-jaVL9kEj4GB12eKIkfmL49OCtGwI12-C")
-                .userName("김철수")
-                .userCellNo("01012345678")
-                .userEmail("test@openbanking.or.kr")
-                .userBirthDate("19880101")
-                .userSexType("M")
-                .userType("1")
-                .joinDate("20190101")
+                .userSeqNo(user.getUserSeqNum())
+                .userCi(user.getUserCi())
+                .userName(user.getUserName())
+                .userCellNo(user.getUserCellNo())
+                .userEmail(user.getUserEmail())
+                .userBirthDate(user.getUserBirthDate())
+                .userSexType(user.getUserSexType() != null ? user.getUserSexType().name() : null)
+                .userType(user.getUserType() == User.UserType.PERSONAL ? "1" : "2")
+                .joinDate(user.getJoinDate())
                 .build();
         
         return UserInfoResponse.builder()
@@ -78,16 +84,21 @@ public class UserService {
                 .apiTranDtm(currentDateTime)
                 .rspCode("A0000")
                 .rspMessage("정상처리")
-                .userSeqNo(userSeqNo)
-                .userCi("s1V7bwE4pxqV_K5oy4EdEOGUHUIpv7_2l4kE8l7FOC4HCi-7TUtT9-jaVL9kEj4GB12eKIkfmL49OCtGwI12-C")
-                .userName("김철수")
+                .userSeqNo(user.getUserSeqNum())
+                .userCi(user.getUserCi())
+                .userName(user.getUserName())
                 .resCnt("1")
                 .userInfo(userInfo)
                 .build();
     }
     
     private String generateApiTranId() {
-        // API 거래고유번호 생성 (실제로는 UUID 등 사용)
-        return "M202301234567890123456789012345";
+        // API 거래고유번호 생성 (오픈뱅킹 표준: M + 요청기관코드 + 14자리 타임스탬프 + 9자리 일련번호)
+        String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        long nanoTime = System.nanoTime();
+        String sequence = String.format("%09d", Math.abs(nanoTime % 1000000000L));
+        
+        // M + 기관코드(8자리) + 타임스탬프(14자리) + 일련번호(9자리) = 총 32자리
+        return "M" + "KFTC0001" + currentDateTime + sequence;
     }
 } 

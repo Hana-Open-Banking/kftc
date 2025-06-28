@@ -1,5 +1,7 @@
 package com.kftc.oauth.controller;
 
+import com.kftc.oauth.config.CurrentUser;
+import com.kftc.oauth.config.JwtAuthenticationFilter;
 import com.kftc.oauth.dto.UserInfoResponse;
 import com.kftc.oauth.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,21 +27,15 @@ public class UserController {
                security = @SecurityRequirement(name = "BearerAuth"))
     @PostMapping("/user/me")
     public ResponseEntity<UserInfoResponse> getUserInfo(
-            @Parameter(description = "Bearer 토큰", required = true, hidden = true) 
-            @RequestHeader("Authorization") String authorization,
-            
+            @CurrentUser JwtAuthenticationFilter.JwtAuthenticatedUser authenticatedUser,
             @Parameter(description = "사용자일련번호", required = true) 
             @RequestParam("user_seq_no") String userSeqNo) {
         
-        // Authorization 헤더 검증
-        if (!authorization.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("유효하지 않은 Authorization 헤더입니다.");
-        }
-        
-        String accessToken = authorization.substring(7);
+        log.info("인증된 사용자 정보: userId={}, clientId={}, scope={}", 
+                authenticatedUser.getUserId(), authenticatedUser.getClientId(), authenticatedUser.getScope());
         
         // 사용자 정보 조회
-        UserInfoResponse userInfo = userService.getUserInfo(accessToken, userSeqNo);
+        UserInfoResponse userInfo = userService.getUserInfo(authenticatedUser.getAccessToken(), userSeqNo);
         
         return ResponseEntity.ok(userInfo);
     }

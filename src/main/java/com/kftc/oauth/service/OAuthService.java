@@ -5,6 +5,7 @@ import com.kftc.common.exception.ErrorCode;
 import com.kftc.oauth.domain.AuthorizationCode;
 import com.kftc.oauth.domain.OAuthClient;
 import com.kftc.oauth.domain.OAuthToken;
+import com.kftc.oauth.domain.User;
 import com.kftc.oauth.dto.AuthorizeRequest;
 
 import com.kftc.oauth.dto.TokenRequest;
@@ -35,6 +36,7 @@ public class OAuthService {
     private final OAuthTokenRepository tokenRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final UserManagementService userManagementService;
     
     @Value("${oauth.token.access-token-validity}")
     private long accessTokenValidityInSeconds;
@@ -301,9 +303,36 @@ public class OAuthService {
     }
     
     private String generateUserSeqNo(String userId) {
-        // 실제로는 사용자 테이블에서 일련번호를 가져와야 함
-        // 여기서는 임시로 10자리 숫자 생성
-        return "1000000106"; // 명세서 예시값 사용
+        // 사용자 ID로 실제 사용자 조회 또는 생성
+        try {
+            // 먼저 userId를 userSeqNum으로 가정하고 조회
+            if (userId != null && userId.matches("\\d{10}")) {
+                // 10자리 숫자면 userSeqNum으로 판단
+                User user = userManagementService.getActiveUser(userId);
+                return user.getUserSeqNum();
+            }
+            
+            // 그렇지 않으면 임시 사용자 생성 (실제로는 본인인증 후 생성해야 함)
+            User tempUser = userManagementService.findOrCreateUser(
+                    generateTempUserCi(userId), // 임시 CI 생성
+                    "사용자" + System.currentTimeMillis(), // 임시 이름
+                    null, // 이메일 없음
+                    "19900101", // 임시 생년월일
+                    null, // 휴대폰 없음
+                    User.UserSexType.M // 임시 성별
+            );
+            
+            return tempUser.getUserSeqNum();
+        } catch (Exception e) {
+            log.warn("사용자 조회/생성 실패, 임시 사용자 일련번호 반환: userId={}", userId);
+            // 실패 시 기본값 반환
+            return "1000000106";
+        }
+    }
+    
+    private String generateTempUserCi(String userId) {
+        // 임시 CI 생성 (실제로는 본인인증을 통해 받아야 함)
+        return "temp_ci_" + userId + "_" + System.currentTimeMillis();
     }
     
     private TokenResponse generateClientCredentialsTokenResponse(OAuthClient client, String scope) {
@@ -331,7 +360,7 @@ public class OAuthService {
                 .tokenType("Bearer")
                 .expiresIn(accessTokenValidityInSeconds)
                 .scope(scope)
-                .userSeqNo("1000000106") // 명세서 예시값
+                .userSeqNo("1000000106") // Client Credentials에서는 사용자 없음
                 .build();
     }
     
