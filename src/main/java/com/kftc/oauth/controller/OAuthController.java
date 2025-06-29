@@ -2,8 +2,7 @@ package com.kftc.oauth.controller;
 
 import com.kftc.common.dto.BasicResponse;
 import com.kftc.oauth.dto.AuthorizeRequest;
-import com.kftc.oauth.dto.RevokeRequest;
-import com.kftc.oauth.dto.RevokeResponse;
+
 import com.kftc.oauth.dto.TokenRequest;
 import com.kftc.oauth.dto.TokenResponse;
 import com.kftc.oauth.service.OAuthService;
@@ -11,7 +10,6 @@ import com.kftc.user.dto.UserRegisterResponse;
 import com.kftc.user.service.OpenBankingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @RestController
-@RequestMapping("/oauth2.0")
+@RequestMapping("/oauth/2.0")
 @RequiredArgsConstructor
 @Tag(name = "OAuth 2.0", description = "오픈뱅킹 OAuth 2.0 인증 API")
 public class OAuthController {
@@ -156,21 +154,7 @@ public class OAuthController {
         return ResponseEntity.ok(successResponse);
     }
     
-    @Operation(summary = "토큰 폐기 API", 
-               description = "오픈뱅킹 명세서에 따른 Access Token 폐기 API")
-    @PostMapping(value = "/revoke", 
-                 consumes = "application/x-www-form-urlencoded",
-                 produces = "application/json")
-    public ResponseEntity<RevokeResponse> revoke(@ModelAttribute RevokeRequest request) {
-        
-        RevokeResponse response = oAuthService.revokeTokenByCredentials(
-                request.getClientId(), 
-                request.getClientSecret(), 
-                request.getAccessToken());
-        
-        // 성공/실패에 관계없이 200 상태 코드로 응답 (오픈뱅킹 명세서에 따름)
-        return ResponseEntity.ok(response);
-    }
+
 
     @Operation(summary = "서비스등록확인 API (3-legged)", 
                description = "센터인증 이용기관이 본인인증(SMS, 금융, 공동 인증 중 택1)을 통해 이미 등록된 서비스 대역을 확인하고 사용자의 계좌목록, 금융, 공동 인증 중 택1을 통해 금융정보 제공에 대한 동의를 받아 해당하는 API입니다.")

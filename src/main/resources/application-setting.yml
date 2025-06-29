@@ -7,7 +7,7 @@ oauth:
   client:
     client-id: kftc-openbanking-client
     client-secret: kftc-openbanking-secret
-    redirect-uri: http://localhost:8080/oauth2.0/callback
+    redirect-uri: http://localhost:8080/oauth/2.0/callback
     scope: login|inquiry|transfer
     client-use-code: F001234560
   token:
