@@ -7,6 +7,8 @@ import com.kftc.oauth.dto.RevokeResponse;
 import com.kftc.oauth.dto.TokenRequest;
 import com.kftc.oauth.dto.TokenResponse;
 import com.kftc.oauth.service.OAuthService;
+import com.kftc.user.dto.UserRegisterResponse;
+import com.kftc.user.service.OpenBankingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -28,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 public class OAuthController {
     
     private final OAuthService oAuthService;
+    private final OpenBankingService openBankingService;
     
     @Operation(summary = "오픈뱅킹 인증 API", description = "오픈뱅킹 명세서에 따른 OAuth 2.0 인증 코드 발급 API")
     @GetMapping("/authorize")
@@ -310,6 +313,88 @@ public class OAuthController {
         
         log.info("OAuth Callback 호출: code={}, scope={}, state={}", 
                 code.substring(0, Math.min(10, code.length())) + "...", scope, state);
+        
+        // 사용자 콜백 처리 - state가 숫자인 경우 사용자 ID로 간주
+        try {
+            Long.parseLong(state);
+            // 사용자 회원가입 관련 콜백 처리
+            UserRegisterResponse userResponse = openBankingService.handleKftcCallback(code, state);
+            
+            String userHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>KFTC 연동 완료</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { 
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+                    }
+                    .container { 
+                        max-width: 600px; background: white; padding: 40px; border-radius: 16px; 
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; overflow: hidden;
+                    }
+                    .success { 
+                        color: #28a745; margin-bottom: 20px; display: flex; align-items: center; 
+                        font-size: 1.8em; font-weight: bold;
+                    }
+                    .success::before { content: '🎉'; margin-right: 10px; font-size: 1.2em; }
+                    .user-info { 
+                        background: #f8f9fa; padding: 20px; border-radius: 8px; 
+                        margin: 20px 0; border-left: 4px solid #28a745;
+                    }
+                    .info-item { margin: 10px 0; }
+                    .info-label { font-weight: bold; color: #495057; }
+                    .info-value { color: #6c757d; margin-left: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1 class="success">KFTC 연동 완료!</h1>
+                    <p>KFTC 오픈뱅킹 연동이 성공적으로 완료되었습니다.</p>
+                    
+                    <div class="user-info">
+                        <strong>👤 사용자 정보:</strong><br>
+                        <div class="info-item">
+                            <span class="info-label">이름:</span>
+                            <span class="info-value">%s</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">휴대폰번호:</span>
+                            <span class="info-value">%s</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">사용자일련번호:</span>
+                            <span class="info-value">%s</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Access Token:</span>
+                            <span class="info-value">%s...</span>
+                        </div>
+                    </div>
+                    
+                    <p><strong>이제 KFTC 오픈뱅킹 API를 사용할 수 있습니다!</strong></p>
+                </div>
+            </body>
+            </html>
+            """.formatted(
+                userResponse.getName(),
+                userResponse.getPhoneNumber(),
+                userResponse.getUserSeqNo(),
+                userResponse.getAccessToken() != null ? 
+                    userResponse.getAccessToken().substring(0, Math.min(20, userResponse.getAccessToken().length())) : "N/A"
+            );
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body(userHtml);
+                    
+        } catch (NumberFormatException e) {
+            // 숫자가 아닌 경우 기존 OAuth 콜백 처리
+        }
         
         String html = """
         <!DOCTYPE html>

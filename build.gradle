@@ -32,7 +32,14 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-authorization-server'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	
+	// HTTP Client
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	
+	// CoolSMS
+	implementation 'net.nurigo:sdk:4.2.7'
 	
 	// JWT 토큰 처리
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
@@ -50,8 +57,8 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-	// swagger - Spring Boot 3.x 호환 버전
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+	// swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0'
 }
 
 dependencyManagement {

@@ -4,23 +4,10 @@ server:
 spring:
   application:
     name: kftc
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: create
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-        format_sql: true
-    show-sql: true
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
   config:
-    import: application-datasource.yml, application-setting.yml
+    import: application-datasource.yml, application-setting.yml, application-local.yml
   profiles:
-    active: datasource, setting
+    active: datasource, setting, local
 
 logging:
   level:

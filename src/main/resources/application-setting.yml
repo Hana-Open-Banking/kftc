@@ -1,7 +1,3 @@
-jwt:
-  secret-key: ${JWT_SECRET_KEY}
-  token:
-    expired-time-ms: 2592000000
 swagger:
   #  server-url: ${SERVER_URL}
   server-url: http://localhost:8080
@@ -27,3 +23,14 @@ openbanking:
   institution:
     code: "097"  # 금융결제원 기관코드
     name: "금융결제원"
+  server-url:
+
+# 카드사 서버 연동 설정
+card:
+  company:
+    kb:
+      url: ${KB_CARD_SERVER_URL:http://localhost:8081}
+    samsung:
+      url: ${SAMSUNG_CARD_SERVER_URL:http://localhost:8082}
+    hyundai:
+      url: ${HYUNDAI_CARD_SERVER_URL:http://localhost:8083}

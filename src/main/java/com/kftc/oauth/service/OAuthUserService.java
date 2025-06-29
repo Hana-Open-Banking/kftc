@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class UserService {
+public class OAuthUserService {
     
     private final OAuthTokenRepository tokenRepository;
     private final JwtTokenProvider jwtTokenProvider;

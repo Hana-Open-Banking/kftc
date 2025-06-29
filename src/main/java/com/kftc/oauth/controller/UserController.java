@@ -1,7 +1,7 @@
 package com.kftc.oauth.controller;
 
 import com.kftc.oauth.dto.UserInfoResponse;
-import com.kftc.oauth.service.UserService;
+import com.kftc.oauth.service.OAuthUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "사용자 정보 API", description = "오픈뱅킹 사용자 정보 조회 API")
 public class UserController {
     
-    private final UserService userService;
+    private final OAuthUserService oAuthUserService;
     
     @Operation(summary = "사용자정보조회 API", description = "사용자의 기본 정보를 조회하는 API입니다.")
     @PostMapping("/user/me")
@@ -36,7 +36,7 @@ public class UserController {
         String accessToken = authorization.substring(7);
         
         // 사용자 정보 조회
-        UserInfoResponse userInfo = userService.getUserInfo(accessToken, userSeqNo);
+        UserInfoResponse userInfo = oAuthUserService.getUserInfo(accessToken, userSeqNo);
         
         return ResponseEntity.ok(userInfo);
     }
