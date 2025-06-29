@@ -3,7 +3,7 @@ package com.kftc.oauth.service;
 import com.kftc.common.exception.BusinessException;
 import com.kftc.common.exception.ErrorCode;
 import com.kftc.oauth.domain.User;
-import com.kftc.oauth.repository.UserRepository;
+import com.kftc.oauth.repository.OAuthUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.Optional;
 @Transactional
 public class UserManagementService {
     
-    private final UserRepository userRepository;
+    private final OAuthUserRepository userRepository;
     
     /**
      * 새로운 사용자 등록

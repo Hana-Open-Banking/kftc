@@ -7,8 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Entity
-@Table(name = "user")
+@Entity(name = "OAuthUser")
+@Table(name = "oauth_users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends DateTimeEntity {
