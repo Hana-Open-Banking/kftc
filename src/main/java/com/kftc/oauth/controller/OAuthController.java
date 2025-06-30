@@ -1,6 +1,7 @@
 package com.kftc.oauth.controller;
 
 import com.kftc.common.dto.BasicResponse;
+import com.kftc.oauth.domain.OAuthClient;
 import com.kftc.oauth.dto.AuthorizeRequest;
 
 import com.kftc.oauth.dto.TokenRequest;
@@ -522,5 +523,223 @@ public class OAuthController {
         return ResponseEntity.ok()
                 .header("Content-Type", "text/html; charset=UTF-8")
                 .body(html);
+    }
+
+    /**
+     * 동의 페이지 표시
+     * 플로우: 금결원 → 사용자 (동의 페이지 표시)
+     */
+    @Operation(summary = "사용자 동의 페이지", description = "오픈뱅킹 서비스 이용 동의 페이지를 표시합니다.")
+    @GetMapping("/consent")
+    public String showConsentPage(
+            @RequestParam("user_seq_no") String userSeqNo,
+            @RequestParam("client_id") String clientId,
+            @RequestParam("redirect_uri") String redirectUri,
+            @RequestParam("scope") String scope,
+            @RequestParam("state") String state,
+            org.springframework.ui.Model model) {
+        
+        log.info("동의 페이지 표시: userSeqNo={}, clientId={}", userSeqNo, clientId);
+        
+        // OAuth 클라이언트 정보 조회
+        OAuthClient client = oAuthService.getClientById(clientId);
+        
+        // 모델에 데이터 추가
+        model.addAttribute("userSeqNo", userSeqNo);
+        model.addAttribute("clientId", clientId);
+        model.addAttribute("clientName", client.getClientName());
+        model.addAttribute("redirectUri", redirectUri);
+        model.addAttribute("scope", scope);
+        model.addAttribute("state", state);
+        model.addAttribute("scopeList", scope.split("\\|"));
+        
+        // 실제로는 Thymeleaf 템플릿을 반환하지만, 현재는 HTML 문자열로 반환
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>금융결제원 오픈뱅킹 서비스 이용동의</title>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .consent-box { border: 2px solid #007bff; padding: 20px; margin: 20px 0; border-radius: 8px; }
+                    .scope-item { margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px; }
+                    .button-group { text-align: center; margin-top: 30px; }
+                    button { padding: 12px 30px; margin: 0 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+                    .agree-btn { background-color: #007bff; color: white; }
+                    .disagree-btn { background-color: #6c757d; color: white; }
+                    button:hover { opacity: 0.8; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>금융결제원 오픈뱅킹</h1>
+                    <h2>서비스 이용 동의</h2>
+                </div>
+                
+                <div class="consent-box">
+                    <h3>""" + client.getClientName() + """
+                    에서 다음 정보에 대한 접근을 요청합니다:</h3>
+                    
+                    <div class="scope-item">
+                        <strong>🔐 로그인 정보</strong><br>
+                        사용자 인증 및 로그인 처리
+                    </div>
+                    <div class="scope-item">
+                        <strong>📊 계좌 조회</strong><br>
+                        보유 계좌 목록 및 잔액 조회
+                    </div>
+                    <div class="scope-item">
+                        <strong>💸 계좌 이체</strong><br>
+                        타 계좌로의 송금 및 이체
+                    </div>
+                </div>
+                
+                <p><strong>주의사항:</strong></p>
+                <ul>
+                    <li>동의하시면 위의 권한이 해당 서비스에 제공됩니다.</li>
+                    <li>언제든지 동의를 철회할 수 있습니다.</li>
+                    <li>개인정보는 안전하게 보호됩니다.</li>
+                </ul>
+                
+                <div class="button-group">
+                    <button class="agree-btn" onclick="submitConsent(true)">동의합니다</button>
+                    <button class="disagree-btn" onclick="submitConsent(false)">동의하지 않습니다</button>
+                </div>
+                
+                <script>
+                    function submitConsent(agreed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/oauth/2.0/consent';
+                        
+                        const fields = {
+                            'user_seq_no': '""" + userSeqNo + """
+                            ',
+                            'client_id': '""" + clientId + """
+                            ',
+                            'redirect_uri': '""" + redirectUri + """
+                            ',
+                            'scope': '""" + scope + """
+                            ',
+                            'state': '""" + state + """
+                            ',
+                            'agreed': agreed
+                        };
+                        
+                        for (const [key, value] of Object.entries(fields)) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = key;
+                            input.value = value;
+                            form.appendChild(input);
+                        }
+                        
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                </script>
+            </body>
+            </html>
+            """;
+    }
+    
+    /**
+     * 동의 처리 및 Authorization Code 발급
+     * 플로우: 사용자 → 금결원 (동의 결과) → 원카 (Authorization Code)
+     */
+    @Operation(summary = "사용자 동의 처리", description = "사용자의 동의 결과를 처리하고 Authorization Code를 발급합니다.")
+    @PostMapping("/consent")
+    public ResponseEntity<Void> processConsent(
+            @RequestParam("user_seq_no") String userSeqNo,
+            @RequestParam("client_id") String clientId,
+            @RequestParam("redirect_uri") String redirectUri,
+            @RequestParam("scope") String scope,
+            @RequestParam("state") String state,
+            @RequestParam("agreed") boolean agreed) {
+        
+        log.info("동의 처리: userSeqNo={}, clientId={}, agreed={}", userSeqNo, clientId, agreed);
+        
+        if (!agreed) {
+            // 동의하지 않은 경우 에러와 함께 리다이렉트
+            String errorUrl = String.format("%s?error=access_denied&error_description=User denied the request&state=%s",
+                    redirectUri, state);
+            
+            log.info("사용자가 동의하지 않음, 에러 리다이렉트: {}", errorUrl);
+            
+            return ResponseEntity.status(302)
+                    .location(URI.create(errorUrl))
+                    .build();
+        }
+        
+        // 동의한 경우: 사용자 상태를 ACTIVE로 변경하고 Authorization Code 발급
+        userService.activateUserConsent(userSeqNo);
+        
+        String authorizationCode = oAuthService.generateAuthorizationCode(clientId, userSeqNo, scope, redirectUri);
+        
+        String successUrl = String.format("%s?code=%s&scope=%s&state=%s",
+                redirectUri, authorizationCode, scope, state);
+        
+        log.info("동의 완료, Authorization Code 발급: userSeqNo={}, code={}", userSeqNo, authorizationCode);
+        
+        return ResponseEntity.status(302)
+                .location(URI.create(successUrl))
+                .build();
+    }
+    
+    /**
+     * 테스트용 동의 처리 API
+     * Swagger에서 쉽게 테스트할 수 있도록 JSON 응답을 반환합니다.
+     */
+    @Operation(summary = "테스트용 동의 처리 API", description = "Swagger 테스트용으로 동의 처리 결과를 JSON 형태로 반환합니다.")
+    @PostMapping("/consent/test")
+    public ResponseEntity<BasicResponse> processConsentTest(
+            @RequestParam("user_seq_no") String userSeqNo,
+            @RequestParam("client_id") String clientId,
+            @RequestParam("redirect_uri") String redirectUri,
+            @RequestParam("scope") String scope,
+            @RequestParam("state") String state,
+            @RequestParam("agreed") boolean agreed) {
+        
+        log.info("테스트용 동의 처리: userSeqNo={}, clientId={}, agreed={}", userSeqNo, clientId, agreed);
+        
+        if (!agreed) {
+            // 동의하지 않은 경우
+            String errorUrl = String.format("%s?error=access_denied&error_description=User denied the request&state=%s",
+                    redirectUri, state);
+            
+            BasicResponse response = BasicResponse.builder()
+                    .status(400)
+                    .message("사용자가 동의하지 않았습니다.")
+                    .data(java.util.Map.of("redirect_url", errorUrl))
+                    .build();
+            
+            return ResponseEntity.status(400).body(response);
+        }
+        
+        // 동의한 경우: 사용자 상태를 ACTIVE로 변경하고 Authorization Code 발급
+        userService.activateUserConsent(userSeqNo);
+        
+        String authorizationCode = oAuthService.generateAuthorizationCode(clientId, userSeqNo, scope, redirectUri);
+        
+        String successUrl = String.format("%s?code=%s&scope=%s&state=%s",
+                redirectUri, authorizationCode, scope, state);
+        
+        log.info("동의 완료, Authorization Code 발급: userSeqNo={}, code={}", userSeqNo, authorizationCode);
+        
+        BasicResponse response = BasicResponse.builder()
+                .status(200)
+                .message("동의 처리가 완료되었습니다.")
+                .data(java.util.Map.of(
+                    "authorization_code", authorizationCode,
+                    "redirect_url", successUrl,
+                    "user_seq_no", userSeqNo,
+                    "scope", scope,
+                    "state", state
+                ))
+                .build();
+        
+        return ResponseEntity.ok(response);
     }
 } 

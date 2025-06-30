@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "oauth_tokens")
+@Table(name = "oauth_token")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OAuthToken extends DateTimeEntity {
@@ -19,19 +19,19 @@ public class OAuthToken extends DateTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "access_token", unique = true, nullable = false, length = 1000)
+    @Column(name = "access_token", length = 1000, unique = true, nullable = false)
     private String accessToken;
     
-    @Column(name = "refresh_token", unique = true, nullable = false, length = 1000)
+    @Column(name = "refresh_token", length = 1000)
     private String refreshToken;
     
-    @Column(name = "client_id", nullable = false)
+    @Column(name = "client_id", length = 50, nullable = false)
     private String clientId;
     
-    @Column(name = "user_id")
+    @Column(name = "user_id", length = 100)
     private String userId;
     
-    @Column(name = "scope")
+    @Column(name = "scope", length = 100)
     private String scope;
     
     @Column(name = "access_token_expires_at", nullable = false)

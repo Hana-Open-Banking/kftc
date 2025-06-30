@@ -37,20 +37,32 @@ public class PhoneVerificationController {
         return ResponseEntity.ok(response);
     }
     
-    @Operation(summary = "휴대폰 인증 코드 확인", description = "발송된 인증 코드를 확인합니다.")
+    @Operation(summary = "휴대폰 인증 코드 확인", 
+               description = "발송된 인증 코드를 확인합니다. 사용자 정보(이름, 주민등록번호)가 포함된 경우 PASS 인증으로 처리하여 CI를 반환합니다.")
     @PostMapping("/verify")
     public ResponseEntity<BasicResponse> verifyCode(
             @Valid @RequestBody PhoneVerificationConfirmRequest request) {
         
-        boolean isVerified = phoneVerificationService.verifyCode(
+        // PASS 인증 (사용자 정보가 있으면 CI 포함 응답, 없으면 기본 응답)
+        Object result = phoneVerificationService.verifyCodeWithPassAuth(
                 request.getPhoneNumber(), 
-                request.getVerificationCode()
+                request.getVerificationCode(),
+                request.getUserName(),
+                request.getSocialSecurityNumber()
         );
+        
+        // 응답 메시지 동적 설정
+        String message;
+        if (request.getUserName() != null && request.getSocialSecurityNumber() != null) {
+            message = "PASS 본인인증이 완료되었습니다.";
+        } else {
+            message = "휴대폰 인증이 완료되었습니다.";
+        }
         
         BasicResponse response = BasicResponse.builder()
                 .status(200)
-                .message("휴대폰 인증이 완료되었습니다.")
-                .data(isVerified)
+                .message(message)
+                .data(result)
                 .build();
         
         return ResponseEntity.ok(response);
