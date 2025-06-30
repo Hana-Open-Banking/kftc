@@ -8,10 +8,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
 import java.io.File;
-import java.net.URL;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.Security;
 import java.util.Properties;
 
@@ -55,15 +61,8 @@ public class OracleCloudConfig {
             // 3. 모든 Oracle 관련 시스템 속성 완전히 클리어
             clearAllOracleProperties();
 
-            // 4. Wallet 디렉토리 설정
-            URL walletUrl = OracleCloudConfig.class.getClassLoader().getResource("Wallet_DinkDB");
-            if (walletUrl == null) {
-                log.error("Wallet 디렉토리를 찾을 수 없습니다.");
-                throw new RuntimeException("Wallet 디렉토리를 찾을 수 없습니다.");
-            }
-
-            File walletDir = new File(walletUrl.toURI());
-            String walletPath = walletDir.getAbsolutePath();
+            // 4. JAR 호환 Wallet 디렉토리 설정
+            String walletPath = extractWalletFiles();
             log.info("Oracle Cloud Wallet 경로: {}", walletPath);
 
             // 5. Wallet 파일들 확인
@@ -89,6 +88,52 @@ public class OracleCloudConfig {
             log.error("Oracle Cloud DataSource 생성 실패: ", e);
             throw new RuntimeException("DataSource 생성 실패", e);
         }
+    }
+
+    /**
+     * JAR 내부의 Wallet 파일들을 임시 디렉토리로 추출
+     */
+    private String extractWalletFiles() throws IOException {
+        // 임시 디렉토리 생성
+        Path tempDir = Files.createTempDirectory("oracle-wallet-");
+        tempDir.toFile().deleteOnExit();
+        
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        
+        try {
+            // Wallet 디렉토리 내의 모든 파일 찾기
+            Resource[] walletResources = resolver.getResources("classpath:Wallet_DinkDB/*");
+            
+            if (walletResources.length == 0) {
+                log.error("Wallet 파일을 찾을 수 없습니다. classpath:Wallet_DinkDB/ 경로를 확인하세요.");
+                throw new RuntimeException("Wallet 파일을 찾을 수 없습니다.");
+            }
+            
+            log.info("발견된 Wallet 파일 개수: {}", walletResources.length);
+            
+            // 각 파일을 임시 디렉토리로 복사
+            for (Resource resource : walletResources) {
+                String filename = resource.getFilename();
+                if (filename != null && !filename.isEmpty()) {
+                    File targetFile = new File(tempDir.toFile(), filename);
+                    
+                    try (InputStream inputStream = resource.getInputStream();
+                         FileOutputStream outputStream = new FileOutputStream(targetFile)) {
+                        inputStream.transferTo(outputStream);
+                        log.info("Wallet 파일 추출 완료: {}", filename);
+                    }
+                    
+                    // 임시 파일도 종료 시 삭제
+                    targetFile.deleteOnExit();
+                }
+            }
+            
+        } catch (IOException e) {
+            log.error("Wallet 파일 추출 중 오류 발생", e);
+            throw e;
+        }
+        
+        return tempDir.toAbsolutePath().toString();
     }
 
     private void clearAllOracleProperties() {

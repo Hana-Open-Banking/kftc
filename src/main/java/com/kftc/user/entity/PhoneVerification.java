@@ -26,6 +26,7 @@ public class PhoneVerification extends DateTimeEntity {
     private String verificationCode;
     
     @Column(nullable = false)
+    @Builder.Default
     private boolean verified = false;
     
     @Column(nullable = false)

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "kftc_authorization_codes")
+@Table(name = "authorization_code")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AuthorizationCode extends DateTimeEntity {
@@ -20,26 +20,26 @@ public class AuthorizationCode extends DateTimeEntity {
     @SequenceGenerator(name = "auth_code_seq", sequenceName = "auth_code_sequence", allocationSize = 1)
     private Long id;
     
-    @Column(name = "code", unique = true, nullable = false)
+    @Column(name = "code", length = 200, unique = true, nullable = false)
     private String code;
     
-    @Column(name = "client_id", nullable = false)
+    @Column(name = "client_id", length = 50, nullable = false)
     private String clientId;
     
-    @Column(name = "user_id")
+    @Column(name = "user_id", length = 100)
     private String userId;
     
-    @Column(name = "redirect_uri", nullable = false)
+    @Column(name = "redirect_uri", length = 500, nullable = false)
     private String redirectUri;
     
-    @Column(name = "scope")
+    @Column(name = "scope", length = 100)
     private String scope;
-    
-    @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
     
     @Column(name = "is_used")
     private Boolean isUsed;
+    
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
     
     @Builder
     public AuthorizationCode(String code, String clientId, String userId, 

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.net.URI;
 
 @Tag(name = "오픈뱅킹 회원가입", description = "오픈뱅킹 회원가입 API")
 @RestController
@@ -299,5 +300,34 @@ public class OpenBankingController {
                 .build();
         
         return ResponseEntity.ok(basicResponse);
+    }
+    
+    /**
+     * 원카에서 CI를 받아 사용자 등록 및 동의 페이지로 리다이렉트
+     * 플로우: 원카 → 금결원 (CI 전달)
+     */
+    @Operation(summary = "원카에서 CI 전달받아 사용자 등록", description = "정보이용기관(원카)에서 본인인증 완료된 CI를 받아 사용자를 등록하고 동의 페이지로 리다이렉트합니다.")
+    @PostMapping("/register-from-wonka")
+    public ResponseEntity<Void> registerFromWonka(
+            @RequestParam("ci") String ci,
+            @RequestParam("client_id") String clientId,
+            @RequestParam("redirect_uri") String redirectUri,
+            @RequestParam("scope") String scope,
+            @RequestParam("state") String state) {
+        
+        log.info("원카에서 CI 전달받음: ci={}, clientId={}", ci.substring(0, 10) + "...", clientId);
+        
+        // 1. CI로 사용자 생성 또는 조회
+        String userSeqNo = userService.createOrGetUserByCi(ci);
+        
+        // 2. 동의 페이지로 리다이렉트 (사용자 정보 포함)
+        String consentUrl = String.format("/oauth/2.0/consent?user_seq_no=%s&client_id=%s&redirect_uri=%s&scope=%s&state=%s",
+                userSeqNo, clientId, redirectUri, scope, state);
+        
+        log.info("동의 페이지로 리다이렉트: userSeqNo={}, consentUrl={}", userSeqNo, consentUrl);
+        
+        return ResponseEntity.status(302)
+                .location(URI.create(consentUrl))
+                .build();
     }
 } 

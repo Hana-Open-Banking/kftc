@@ -25,6 +25,15 @@ openbanking:
     name: "금융결제원"
   server-url:
 
+# KFTC 설정 (서비스 클래스용)
+kftc:
+  base-url: https://testapi.openbanking.or.kr
+  client-id: kftc-openbanking-client
+  client-secret: kftc-openbanking-secret
+  redirect-uri: http://localhost:8080/oauth/2.0/callback
+  open-banking:
+    client-use-code: F001234560
+
 # 카드사 서버 연동 설정
 card:
   company:

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Component
@@ -88,23 +89,20 @@ public class DataInitializer implements CommandLineRunner {
         try {
             // 테스트용 사용자 1 - 김철수 (오픈뱅킹 명세서 예시)
             String testUserCi1 = "s1V7bwE4pxqV_K5oy4EdEOGUHUIpv7_2l4kE8l7FOC4HCi-7TUtT9-jaVL9kEj4GB12eKIkfmL49OCtGwI12-C";
-            if (!userService.findActiveUserByCi(testUserCi1).isPresent()) {
-                createTestUser(testUserCi1, "김철수", "test@openbanking.or.kr", 
-                              LocalDate.of(1988, 1, 1), "M", "01012345678", User.UserType.PERSONAL);
+            if (!userRepository.existsByUserCi(testUserCi1)) {
+                createTestUser(testUserCi1, "김철수", "test@openbanking.or.kr", "19880101", "PERSONAL");
             }
             
             // 테스트용 사용자 2 - 홍길동
             String testUserCi2 = "test_ci_hong_gildong_12345678901234567890123456789012345678901234567890";
-            if (!userService.findActiveUserByCi(testUserCi2).isPresent()) {
-                createTestUser(testUserCi2, "홍길동", "hong@example.com", 
-                              LocalDate.of(1990, 3, 15), "M", "01087654321", User.UserType.PERSONAL);
+            if (!userRepository.existsByUserCi(testUserCi2)) {
+                createTestUser(testUserCi2, "홍길동", "hong@example.com", "19900315", "PERSONAL");
             }
             
             // 테스트용 법인 사용자
             String testUserCi3 = "corp_ci_test_company_12345678901234567890123456789012345678901234567890";
-            if (!userService.findActiveUserByCi(testUserCi3).isPresent()) {
-                createTestUser(testUserCi3, "테스트회사", "admin@testcorp.com", 
-                              LocalDate.of(2000, 1, 1), "M", "0212345678", User.UserType.CORPORATE);
+            if (!userRepository.existsByUserCi(testUserCi3)) {
+                createTestUser(testUserCi3, "테스트회사", "admin@testcorp.com", "20000101", "CORPORATE");
             }
             
         } catch (Exception e) {
@@ -112,38 +110,32 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
     
-    private void createTestUser(String ci, String name, String email, 
-                               LocalDate birthDate, String gender, String phoneNumber, 
-                               User.UserType userType) {
+    private void createTestUser(String userCi, String userName, String userEmail, 
+                               String userInfo, String userType) {
         try {
-            String userSeqNum = generateTestUserSeqNum();
+            String userSeqNo = generateTestUserSeqNo();
             
             User testUser = User.builder()
-                    .userSeqNum(userSeqNum)
-                    .ci(ci)
-                    .name(name)
-                    .email(email)
-                    .birthDate(birthDate)
-                    .gender(gender)
-                    .phoneNumber(phoneNumber)
-                    .phoneVerified(true)
-                    .userStatus(User.UserStatus.ACTIVE)
+                    .userSeqNo(userSeqNo)
+                    .userCi(userCi)
+                    .userName(userName)
+                    .userEmail(userEmail)
+                    .userInfo(userInfo)
+                    .userStatus("ACTIVE")
                     .userType(userType)
                     .build();
             
-            testUser.generateJoinDate();
-            
             // UserRepository를 통해 직접 저장 (초기화용)
             User savedUser = userRepository.save(testUser);
-            log.info("테스트 사용자 생성 완료: id={}, userSeqNum={}, userName={}", 
-                    savedUser.getId(), savedUser.getUserSeqNum(), savedUser.getName());
+            log.info("테스트 사용자 생성 완료: userSeqNo={}, userName={}", 
+                    savedUser.getUserSeqNo(), savedUser.getUserName());
             
         } catch (Exception e) {
-            log.error("테스트 사용자 생성 실패: name={}, error={}", name, e.getMessage());
+            log.error("테스트 사용자 생성 실패: name={}, error={}", userName, e.getMessage());
         }
     }
     
-    private String generateTestUserSeqNum() {
+    private String generateTestUserSeqNo() {
         // 테스트용 일련번호 생성 (실제로는 UserService에서 처리)
         return "1000000" + String.format("%03d", (int)(Math.random() * 900) + 100);
     }
