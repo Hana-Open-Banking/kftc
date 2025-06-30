@@ -5,7 +5,7 @@ import com.kftc.common.exception.ErrorCode;
 import com.kftc.oauth.domain.AuthorizationCode;
 import com.kftc.oauth.domain.OAuthClient;
 import com.kftc.oauth.domain.OAuthToken;
-import com.kftc.oauth.domain.User;
+
 import com.kftc.oauth.dto.AuthorizeRequest;
 
 import com.kftc.oauth.dto.TokenRequest;
@@ -14,6 +14,7 @@ import com.kftc.oauth.repository.AuthorizationCodeRepository;
 import com.kftc.oauth.repository.OAuthClientRepository;
 import com.kftc.oauth.repository.OAuthTokenRepository;
 import com.kftc.oauth.util.JwtTokenProvider;
+import com.kftc.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,7 +37,7 @@ public class OAuthService {
     private final OAuthTokenRepository tokenRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
-    private final UserManagementService userManagementService;
+    private final UserService userService;
     
     @Value("${oauth.token.access-token-validity}")
     private long accessTokenValidityInSeconds;
@@ -308,21 +309,18 @@ public class OAuthService {
             // 먼저 userId를 userSeqNum으로 가정하고 조회
             if (userId != null && userId.matches("\\d{10}")) {
                 // 10자리 숫자면 userSeqNum으로 판단
-                User user = userManagementService.getActiveUser(userId);
+                com.kftc.user.entity.User user = userService.findByUserSeqNum(userId);
                 return user.getUserSeqNum();
             }
             
-            // 그렇지 않으면 임시 사용자 생성 (실제로는 본인인증 후 생성해야 함)
-            User tempUser = userManagementService.findOrCreateUser(
-                    generateTempUserCi(userId), // 임시 CI 생성
-                    "사용자" + System.currentTimeMillis(), // 임시 이름
-                    null, // 이메일 없음
-                    "19900101", // 임시 생년월일
-                    null, // 휴대폰 없음
-                    User.UserSexType.M // 임시 성별
-            );
+            // 그렇지 않으면 CI로 사용자 찾기 시도
+            if (userId != null && userId.startsWith("temp_ci_")) {
+                com.kftc.user.entity.User user = userService.findOrCreateUserByCi(userId);
+                return user.getUserSeqNum();
+            }
             
-            return tempUser.getUserSeqNum();
+            // 기본값 반환
+            return "1000000106";
         } catch (Exception e) {
             log.warn("사용자 조회/생성 실패, 임시 사용자 일련번호 반환: userId={}", userId);
             // 실패 시 기본값 반환

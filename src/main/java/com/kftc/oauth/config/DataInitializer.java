@@ -1,9 +1,10 @@
 package com.kftc.oauth.config;
 
 import com.kftc.oauth.domain.OAuthClient;
-import com.kftc.oauth.domain.User;
 import com.kftc.oauth.repository.OAuthClientRepository;
-import com.kftc.oauth.service.UserManagementService;
+import com.kftc.user.entity.User;
+import com.kftc.user.repository.UserRepository;
+import com.kftc.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.time.LocalDate;
 
 @Slf4j
 @Component
@@ -21,7 +22,8 @@ public class DataInitializer implements CommandLineRunner {
     
     private final OAuthClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
-    private final UserManagementService userManagementService;
+    private final UserService userService; // 통합된 UserService 사용
+    private final UserRepository userRepository; // 테스트 사용자 직접 생성용
     
     @Value("${oauth.client.client-id}")
     private String clientId;
@@ -86,51 +88,63 @@ public class DataInitializer implements CommandLineRunner {
         try {
             // 테스트용 사용자 1 - 김철수 (오픈뱅킹 명세서 예시)
             String testUserCi1 = "s1V7bwE4pxqV_K5oy4EdEOGUHUIpv7_2l4kE8l7FOC4HCi-7TUtT9-jaVL9kEj4GB12eKIkfmL49OCtGwI12-C";
-            if (!userManagementService.findActiveUserByCi(testUserCi1).isPresent()) {
-                User testUser1 = userManagementService.registerUser(
-                        testUserCi1,
-                        User.UserType.PERSONAL,
-                        "김철수",
-                        "test@openbanking.or.kr",
-                        "19880101",
-                        "01012345678",
-                        User.UserSexType.M
-                );
-                log.info("테스트 사용자 1 생성: userSeqNum={}, userName={}", testUser1.getUserSeqNum(), testUser1.getUserName());
+            if (!userService.findActiveUserByCi(testUserCi1).isPresent()) {
+                createTestUser(testUserCi1, "김철수", "test@openbanking.or.kr", 
+                              LocalDate.of(1988, 1, 1), "M", "01012345678", User.UserType.PERSONAL);
             }
             
             // 테스트용 사용자 2 - 홍길동
             String testUserCi2 = "test_ci_hong_gildong_12345678901234567890123456789012345678901234567890";
-            if (!userManagementService.findActiveUserByCi(testUserCi2).isPresent()) {
-                User testUser2 = userManagementService.registerUser(
-                        testUserCi2,
-                        User.UserType.PERSONAL,
-                        "홍길동",
-                        "hong@example.com",
-                        "19900315",
-                        "01087654321",
-                        User.UserSexType.M
-                );
-                log.info("테스트 사용자 2 생성: userSeqNum={}, userName={}", testUser2.getUserSeqNum(), testUser2.getUserName());
+            if (!userService.findActiveUserByCi(testUserCi2).isPresent()) {
+                createTestUser(testUserCi2, "홍길동", "hong@example.com", 
+                              LocalDate.of(1990, 3, 15), "M", "01087654321", User.UserType.PERSONAL);
             }
             
             // 테스트용 법인 사용자
             String testUserCi3 = "corp_ci_test_company_12345678901234567890123456789012345678901234567890";
-            if (!userManagementService.findActiveUserByCi(testUserCi3).isPresent()) {
-                User testUser3 = userManagementService.registerUser(
-                        testUserCi3,
-                        User.UserType.CORPORATE,
-                        "테스트회사",
-                        "admin@testcorp.com",
-                        "20000101",
-                        "0212345678",
-                        null
-                );
-                log.info("테스트 법인 사용자 생성: userSeqNum={}, userName={}", testUser3.getUserSeqNum(), testUser3.getUserName());
+            if (!userService.findActiveUserByCi(testUserCi3).isPresent()) {
+                createTestUser(testUserCi3, "테스트회사", "admin@testcorp.com", 
+                              LocalDate.of(2000, 1, 1), "M", "0212345678", User.UserType.CORPORATE);
             }
             
         } catch (Exception e) {
             log.warn("테스트 사용자 초기화 중 오류 발생: {}", e.getMessage());
         }
+    }
+    
+    private void createTestUser(String ci, String name, String email, 
+                               LocalDate birthDate, String gender, String phoneNumber, 
+                               User.UserType userType) {
+        try {
+            String userSeqNum = generateTestUserSeqNum();
+            
+            User testUser = User.builder()
+                    .userSeqNum(userSeqNum)
+                    .ci(ci)
+                    .name(name)
+                    .email(email)
+                    .birthDate(birthDate)
+                    .gender(gender)
+                    .phoneNumber(phoneNumber)
+                    .phoneVerified(true)
+                    .userStatus(User.UserStatus.ACTIVE)
+                    .userType(userType)
+                    .build();
+            
+            testUser.generateJoinDate();
+            
+            // UserRepository를 통해 직접 저장 (초기화용)
+            User savedUser = userRepository.save(testUser);
+            log.info("테스트 사용자 생성 완료: id={}, userSeqNum={}, userName={}", 
+                    savedUser.getId(), savedUser.getUserSeqNum(), savedUser.getName());
+            
+        } catch (Exception e) {
+            log.error("테스트 사용자 생성 실패: name={}, error={}", name, e.getMessage());
+        }
+    }
+    
+    private String generateTestUserSeqNum() {
+        // 테스트용 일련번호 생성 (실제로는 UserService에서 처리)
+        return "1000000" + String.format("%03d", (int)(Math.random() * 900) + 100);
     }
 } 
