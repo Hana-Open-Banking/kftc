@@ -4,22 +4,16 @@ import com.kftc.common.exception.BusinessException;
 import com.kftc.common.exception.EntityNotFoundException;
 import com.kftc.common.exception.ErrorCode;
 import com.kftc.user.dto.KftcTokenResponse;
-import com.kftc.user.dto.OpenBankingRegisterRequest;
-import com.kftc.user.dto.OpenBankingRegisterResponse;
-import com.kftc.user.dto.UserRegisterRequest;
+
 import com.kftc.user.dto.UserRegisterResponse;
 import com.kftc.user.entity.User;
 import com.kftc.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -29,66 +23,7 @@ import java.util.Optional;
 public class UserService {
     
     private final UserRepository userRepository;
-    private final PhoneVerificationService phoneVerificationService;
     private final KftcInternalService kftcInternalService;
-    
-    @Value("${kftc.client-id}")
-    private String kftcClientId;
-    
-    @Value("${kftc.open-banking.client-use-code}")
-    private String clientUseCode;
-    
-    /**
-     * 오픈뱅킹 회원가입
-     */
-    @Transactional
-    public OpenBankingRegisterResponse registerMember(OpenBankingRegisterRequest request) {
-        log.info("오픈뱅킹 회원가입 시작: name={}, phoneNumber={}", 
-                request.getName(), request.getPhoneNumber());
-        
-        // CI 생성 (실제로는 PASS에서 받아온 값)
-        String ci = generateTempCi(request.getName(), request.getSocialSecurityNumber());
-        
-        // 중복 검증
-        if (userRepository.existsByUserCi(ci)) {
-            throw new BusinessException(ErrorCode.DUPLICATED_PHONE_NUMBER, "이미 가입된 사용자입니다.");
-        }
-        
-        // 생년월일과 성별 추출
-        LocalDate birthDate = extractBirthDate(request.getSocialSecurityNumber());
-        String gender = extractGender(request.getSocialSecurityNumber());
-        
-        // 사용자 일련번호 생성
-        String userSeqNo = generateNextUserSeqNo();
-        
-        // User 엔티티 생성
-        User user = User.builder()
-                .userSeqNo(userSeqNo)
-                .userCi(ci)
-                .userName(request.getName())
-                .userType("PERSONAL")
-                .userStatus("ACTIVE")
-                .userEmail(request.getEmail())
-                .userInfo(birthDate.format(DateTimeFormatter.ofPattern("yyyyMMdd")))
-                .build();
-        
-        try {
-            user = userRepository.save(user);
-            log.info("오픈뱅킹 회원가입 완료: userSeqNo={}, userName={}, ci={}", 
-                    user.getUserSeqNo(), user.getUserName(), ci);
-        } catch (DataIntegrityViolationException e) {
-            handleDataIntegrityViolation(e);
-        }
-        
-        return OpenBankingRegisterResponse.builder()
-                .name(user.getUserName())
-                .ci(user.getUserCi())
-                .birthDate(birthDate)
-                .gender(gender)
-                .phoneNumber(request.getPhoneNumber())
-                .email(user.getUserEmail())
-                .build();
-    }
     
     /**
      * CI로 사용자 생성 또는 조회 (오픈뱅킹 플로우용)
@@ -189,43 +124,6 @@ public class UserService {
         }
     }
     
-    private String generateTempCi(String name, String socialSecurityNumber) {
-        // 실제로는 PASS 인증에서 받아오는 값
-        return "CI" + socialSecurityNumber + name.hashCode() + System.currentTimeMillis();
-    }
-    
-    private LocalDate extractBirthDate(String socialSecurityNumber) {
-        if (socialSecurityNumber.length() < 7) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "주민등록번호가 올바르지 않습니다.");
-        }
-        
-        String yearPrefix = socialSecurityNumber.substring(0, 2);
-        String month = socialSecurityNumber.substring(2, 4);
-        String day = socialSecurityNumber.substring(4, 6);
-        
-        // 뒷자리 첫 번째 숫자로 연도 판단
-        char genderDigit = socialSecurityNumber.charAt(6);
-        int year;
-        
-        if (genderDigit == '1' || genderDigit == '2') {
-            year = Integer.parseInt("19" + yearPrefix);
-        } else if (genderDigit == '3' || genderDigit == '4') {
-            year = Integer.parseInt("20" + yearPrefix);
-        } else {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "주민등록번호가 올바르지 않습니다.");
-        }
-        
-        return LocalDate.of(year, Integer.parseInt(month), Integer.parseInt(day));
-    }
-    
-    private String extractGender(String socialSecurityNumber) {
-        if (socialSecurityNumber.length() < 7) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "주민등록번호가 올바르지 않습니다.");
-        }
-        
-        char genderDigit = socialSecurityNumber.charAt(6);
-        return (genderDigit == '1' || genderDigit == '3') ? "M" : "F";
-    }
 
     /**
      * KFTC 콜백 처리
@@ -262,76 +160,6 @@ public class UserService {
         }
     }
     
-    /**
-     * 전체 회원 목록 조회
-     */
-    @Transactional(readOnly = true)
-    public List<User> getAllMembers() {
-        log.info("전체 회원 목록 조회");
-        return userRepository.findByUserStatus("ACTIVE");
-    }
-    
-    /**
-     * 휴대폰번호로 회원 조회
-     */
-    @Transactional(readOnly = true)
-    public User getMemberByPhone(String phoneNumber) {
-        log.info("휴대폰번호로 회원 조회: phoneNumber={}", phoneNumber);
-        return userRepository.findByUserEmail(phoneNumber) // 임시로 email 필드를 phoneNumber로 사용
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
-    }
-    
-    /**
-     * 휴대폰번호로 회원 삭제
-     */
-    @Transactional
-    public void deleteMemberByPhone(String phoneNumber) {
-        log.info("휴대폰번호로 회원 삭제: phoneNumber={}", phoneNumber);
-        User user = getMemberByPhone(phoneNumber);
-        userRepository.delete(user);
-        log.info("사용자 삭제 완료: userSeqNo={}, phoneNumber={}", user.getUserSeqNo(), phoneNumber);
-    }
-    
-    /**
-     * KFTC 연동
-     */
-    @Transactional(readOnly = true)
-    public String connectKftc(Long userId) {
-        log.info("KFTC 연동 요청: userId={}", userId);
-        User user = userRepository.findByUserSeqNo(userId.toString())
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
-        
-        // 사용자 인증 확인
-        if (!"ACTIVE".equals(user.getUserStatus())) {
-            throw new BusinessException(ErrorCode.INVALID_VALUE, "사용자 인증이 필요합니다");
-        }
-        
-        // KFTC 인증 URL 생성
-        String kftcAuthUrl = (user.getUserInfo() == null) ? 
-                "http://localhost:8080/oauth/2.0/authorize?response_type=code&client_id=kftc-openbanking-client&redirect_uri=http://localhost:8080/oauth2/callback&scope=login%20inquiry%20transfer&state=" 
-                + userId + "&auth_type=0" : "ALREADY_CONNECTED";
-        
-        return kftcAuthUrl;
-    }
-    
-    /**
-     * 사용자 정보 조회
-     */
-    @Transactional(readOnly = true)
-    public UserRegisterResponse getUserInfo(Long userId) {
-        log.info("사용자 정보 조회: userId={}", userId);
-        
-        User user = userRepository.findByUserSeqNo(userId.toString())
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.ENTITY_NOT_FOUND));
-        
-        return UserRegisterResponse.builder()
-                .userSeqNo(user.getUserSeqNo())
-                .name(user.getUserName())
-                .phoneNumber(user.getUserEmail()) // 임시로 email 필드 사용
-                .ci(user.getUserCi())
-                .accessToken(user.getUserInfo())
-                .build();
-    }
 
     /**
      * 사용자 동의 처리 - 상태를 ACTIVE로 변경

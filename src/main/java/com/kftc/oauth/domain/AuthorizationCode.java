@@ -10,14 +10,14 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "authorization_code")
+@Table(name = "kftc_authorization_code")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AuthorizationCode extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_code_seq")
-    @SequenceGenerator(name = "auth_code_seq", sequenceName = "auth_code_sequence", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "kftc_auth_code_seq")
+    @SequenceGenerator(name = "kftc_auth_code_seq", sequenceName = "kftc_auth_code_sequence", allocationSize = 1)
     private Long id;
     
     @Column(name = "code", length = 200, unique = true, nullable = false)

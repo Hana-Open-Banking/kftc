@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "user_consent_financial_institution")
+@Table(name = "kftc_user_consent_financial_institution")
 @IdClass(UserConsentFinancialInstitutionId.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
