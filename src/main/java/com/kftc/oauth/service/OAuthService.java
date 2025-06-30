@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -306,17 +307,19 @@ public class OAuthService {
     private String generateUserSeqNo(String userId) {
         // 사용자 ID로 실제 사용자 조회 또는 생성
         try {
-            // 먼저 userId를 userSeqNum으로 가정하고 조회
+            // 먼저 userId를 userSeqNo로 가정하고 조회
             if (userId != null && userId.matches("\\d{10}")) {
-                // 10자리 숫자면 userSeqNum으로 판단
-                com.kftc.user.entity.User user = userService.findByUserSeqNum(userId);
-                return user.getUserSeqNum();
+                // 10자리 숫자면 userSeqNo로 판단
+                Optional<com.kftc.user.entity.User> userOpt = userService.findActiveUserByUserSeqNo(userId);
+                if (userOpt.isPresent()) {
+                    return userOpt.get().getUserSeqNo();
+                }
             }
             
             // 그렇지 않으면 CI로 사용자 찾기 시도
             if (userId != null && userId.startsWith("temp_ci_")) {
-                com.kftc.user.entity.User user = userService.findOrCreateUserByCi(userId);
-                return user.getUserSeqNum();
+                String userSeqNo = userService.createOrGetUserByCi(userId);
+                return userSeqNo;
             }
             
             // 기본값 반환
@@ -437,5 +440,47 @@ public class OAuthService {
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /**
+     * 클라이언트 ID로 클라이언트 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public OAuthClient getClientById(String clientId) {
+        return clientRepository.findByClientIdAndIsActiveTrue(clientId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "클라이언트를 찾을 수 없습니다: " + clientId));
+    }
+    
+    /**
+     * Authorization Code 생성 (동의 완료 후)
+     */
+    @Transactional
+    public String generateAuthorizationCode(String clientId, String userSeqNo, String scope, String redirectUri) {
+        log.info("Authorization Code 생성: clientId={}, userSeqNo={}", clientId, userSeqNo);
+        
+        // 클라이언트 검증
+        OAuthClient client = getClientById(clientId);
+        
+        // 기존 코드 삭제 (있다면)
+        codeRepository.deleteByClientIdAndUserId(clientId, userSeqNo);
+        
+        // 새 인증 코드 생성
+        String code = generateSecureCode();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10); // 10분 유효
+        
+        AuthorizationCode authCode = AuthorizationCode.builder()
+                .code(code)
+                .clientId(clientId)
+                .userId(userSeqNo)
+                .redirectUri(redirectUri)
+                .scope(scope)
+                .expiresAt(expiresAt)
+                .build();
+        
+        codeRepository.save(authCode);
+        
+        log.info("Authorization Code 발급 완료: code={}, userSeqNo={}", code, userSeqNo);
+        
+        return code;
     }
 } 
