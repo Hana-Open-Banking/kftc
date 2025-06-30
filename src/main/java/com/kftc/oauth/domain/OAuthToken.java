@@ -10,13 +10,14 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "oauth_tokens")
+@Table(name = "kftc_oauth_tokens")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OAuthToken extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "oauth_token_seq")
+    @SequenceGenerator(name = "oauth_token_seq", sequenceName = "oauth_token_sequence", allocationSize = 1)
     private Long id;
     
     @Column(name = "access_token", unique = true, nullable = false, length = 1000)

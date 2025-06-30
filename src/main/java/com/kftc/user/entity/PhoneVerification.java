@@ -7,7 +7,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "phone_verifications")
+@Table(name = "kftc_phone_verifications")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
 public class PhoneVerification extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "phone_verification_seq")
+    @SequenceGenerator(name = "phone_verification_seq", sequenceName = "phone_verification_sequence", allocationSize = 1)
     private Long id;
     
     @Column(nullable = false, length = 11)

@@ -5,18 +5,27 @@
 #    password: ${DATASOURCE_PASSWORD}
 #    driver-class-name: com.mysql.cj.jdbc.Driver
 
+# Oracle Cloud DataSource는 OracleCloudConfig에서 직접 생성
+#spring:
+#  datasource:
+#    url: jdbc:oracle:thin:@dinkdb_medium
+#    username: DA2504
+#    password: Data2504
+#    driver-class-name: oracle.jdbc.OracleDriver
+#    hikari:
+#      maximum-pool-size: 5
+#      connection-timeout: 30000
+#      idle-timeout: 600000
+#      max-lifetime: 1800000
+
 spring:
-  datasource:
-    url: jdbc:h2:mem:kftc;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password: 
-    driver-class-name: org.h2.Driver
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
-    database-platform: org.hibernate.dialect.H2Dialect
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    database-platform: org.hibernate.dialect.OracleDialect
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+

@@ -8,13 +8,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "oauth_clients")
+@Table(name = "kftc_oauth_clients")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OAuthClient extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "oauth_client_seq")
+    @SequenceGenerator(name = "oauth_client_seq", sequenceName = "oauth_client_sequence", allocationSize = 1)
     private Long id;
     
     @Column(name = "client_id", unique = true, nullable = false)
