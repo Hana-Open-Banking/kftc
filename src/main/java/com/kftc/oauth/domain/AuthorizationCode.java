@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
 public class AuthorizationCode extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "auth_code_seq")
+    @SequenceGenerator(name = "auth_code_seq", sequenceName = "auth_code_sequence", allocationSize = 1)
     private Long id;
     
     @Column(name = "code", length = 200, unique = true, nullable = false)

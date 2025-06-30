@@ -1,0 +1,5 @@
+# This setting is for platform-independent wallet location.
+# It uses the TNS_ADMIN variable set in the Java code.
+# The previous hardcoded Windows path was causing initialization errors.
+WALLET_LOCATION = (SOURCE = (METHOD = file) (METHOD_DATA = (DIRECTORY="${TNS_ADMIN}")))
+SSL_SERVER_DN_MATCH=yes

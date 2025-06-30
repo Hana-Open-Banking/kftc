@@ -14,7 +14,8 @@ import lombok.NoArgsConstructor;
 public class OAuthClient extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "oauth_client_seq")
+    @SequenceGenerator(name = "oauth_client_seq", sequenceName = "oauth_client_sequence", allocationSize = 1)
     private Long id;
     
     @Column(name = "client_id", length = 50, unique = true, nullable = false)

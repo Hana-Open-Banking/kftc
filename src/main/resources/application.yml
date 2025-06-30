@@ -8,6 +8,8 @@ spring:
     import: application-datasource.yml, application-setting.yml, application-local.yml
   profiles:
     active: datasource, setting, local
+  main:
+    lazy-initialization: false
 
 logging:
   level:

@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
 public class OAuthToken extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "oauth_token_seq")
+    @SequenceGenerator(name = "oauth_token_seq", sequenceName = "oauth_token_sequence", allocationSize = 1)
     private Long id;
     
     @Column(name = "access_token", length = 1000, unique = true, nullable = false)
