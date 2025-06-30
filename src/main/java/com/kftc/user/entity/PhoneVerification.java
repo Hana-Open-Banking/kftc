@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 public class PhoneVerification extends DateTimeEntity {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "phone_verification_seq")
-    @SequenceGenerator(name = "phone_verification_seq", sequenceName = "phone_verification_sequence", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "kftc_phone_verification_seq")
+    @SequenceGenerator(name = "kftc_phone_verification_seq", sequenceName = "kftc_phone_verification_sequence", allocationSize = 1)
     private Long id;
     
     @Column(nullable = false, length = 11)

@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "financial_institution")
+@Table(name = "kftc_financial_institution")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FinancialInstitution extends DateTimeEntity {

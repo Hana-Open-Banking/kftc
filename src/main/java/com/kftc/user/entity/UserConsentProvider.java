@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "user_consent_provider")
+@Table(name = "kftc_user_consent_provider")
 @IdClass(UserConsentProviderId.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
