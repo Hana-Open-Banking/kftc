@@ -7,7 +7,7 @@ import com.kftc.oauth.dto.TokenRequest;
 import com.kftc.oauth.dto.TokenResponse;
 import com.kftc.oauth.service.OAuthService;
 import com.kftc.user.dto.UserRegisterResponse;
-import com.kftc.user.service.OpenBankingService;
+import com.kftc.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,7 +28,7 @@ import java.nio.charset.StandardCharsets;
 public class OAuthController {
     
     private final OAuthService oAuthService;
-    private final OpenBankingService openBankingService;
+    private final UserService userService;
     
     @Operation(summary = "오픈뱅킹 인증 API", description = "오픈뱅킹 명세서에 따른 OAuth 2.0 인증 코드 발급 API")
     @GetMapping("/authorize")
@@ -302,7 +302,7 @@ public class OAuthController {
         try {
             Long.parseLong(state);
             // 사용자 회원가입 관련 콜백 처리
-            UserRegisterResponse userResponse = openBankingService.handleKftcCallback(code, state);
+            UserRegisterResponse userResponse = userService.handleKftcCallback(code, state);
             
             String userHtml = """
             <!DOCTYPE html>

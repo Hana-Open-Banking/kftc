@@ -4,7 +4,7 @@ import com.kftc.common.dto.BasicResponse;
 import com.kftc.user.dto.OpenBankingRegisterRequest;
 import com.kftc.user.dto.OpenBankingRegisterResponse;
 import com.kftc.user.dto.UserRegisterResponse;
-import com.kftc.user.service.OpenBankingService;
+import com.kftc.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import jakarta.validation.Valid;
 @Slf4j
 public class OpenBankingController {
     
-    private final OpenBankingService openBankingService;
+    private final UserService userService;
     
     /**
      * 오픈뱅킹 회원가입 페이지
@@ -168,7 +168,7 @@ public class OpenBankingController {
         log.info("오픈뱅킹 회원가입 요청: name={}, phoneNumber={}", 
                 request.getName(), request.getPhoneNumber());
         
-        OpenBankingRegisterResponse response = openBankingService.registerMember(request);
+        OpenBankingRegisterResponse response = userService.registerMember(request);
         
         BasicResponse basicResponse = BasicResponse.builder()
                 .status(200)
@@ -188,7 +188,7 @@ public class OpenBankingController {
         
         log.info("전체 사용자 목록 조회 요청");
         
-        java.util.List<com.kftc.user.entity.User> users = openBankingService.getAllMembers();
+        java.util.List<com.kftc.user.entity.User> users = userService.getAllMembers();
         
         BasicResponse basicResponse = BasicResponse.builder()
                 .status(200)
@@ -209,7 +209,7 @@ public class OpenBankingController {
         log.info("휴대폰번호로 사용자 조회: phoneNumber={}", phoneNumber);
         
         try {
-            com.kftc.user.entity.User user = openBankingService.getMemberByPhone(phoneNumber);
+            com.kftc.user.entity.User user = userService.getMemberByPhone(phoneNumber);
             
             BasicResponse basicResponse = BasicResponse.builder()
                     .status(200)
@@ -240,7 +240,7 @@ public class OpenBankingController {
         log.info("휴대폰번호로 사용자 삭제: phoneNumber={}", phoneNumber);
         
         try {
-            openBankingService.deleteMemberByPhone(phoneNumber);
+            userService.deleteMemberByPhone(phoneNumber);
             
             BasicResponse basicResponse = BasicResponse.builder()
                     .status(200)
@@ -270,7 +270,7 @@ public class OpenBankingController {
         
         log.info("KFTC 연동 요청: userId={}", userId);
         
-        String authUrl = openBankingService.connectKftc(userId);
+        String authUrl = userService.connectKftc(userId);
         
         BasicResponse response = BasicResponse.builder()
                 .status(200)
@@ -290,7 +290,7 @@ public class OpenBankingController {
         
         log.info("사용자 정보 조회: userId={}", userId);
         
-        UserRegisterResponse response = openBankingService.getUserInfo(userId);
+        UserRegisterResponse response = userService.getUserInfo(userId);
         
         BasicResponse basicResponse = BasicResponse.builder()
                 .status(200)
