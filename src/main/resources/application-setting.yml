@@ -1,7 +1,36 @@
-jwt:
-  secret-key: ${JWT_SECRET_KEY}
-  token:
-    expired-time-ms: 2592000000
 swagger:
   #  server-url: ${SERVER_URL}
   server-url: http://localhost:8080
+
+# OAuth 및 토큰 설정
+oauth:
+  client:
+    client-id: kftc-openbanking-client
+    client-secret: kftc-openbanking-secret
+    redirect-uri: http://localhost:8080/oauth/2.0/callback
+    scope: login|inquiry|transfer
+    client-use-code: F001234560
+  token:
+    access-token-validity: 3600  # 1시간 (초)
+    refresh-token-validity: 86400  # 24시간 (초)
+    jwt-secret: kftc-openbanking-jwt-secret-key-for-token-generation-and-validation
+
+# 오픈뱅킹 API 설정
+openbanking:
+  api:
+    base-url: https://testapi.openbanking.or.kr
+    version: v2.0
+  institution:
+    code: "097"  # 금융결제원 기관코드
+    name: "금융결제원"
+  server-url:
+
+# 카드사 서버 연동 설정
+card:
+  company:
+    kb:
+      url: ${KB_CARD_SERVER_URL:http://localhost:8081}
+    samsung:
+      url: ${SAMSUNG_CARD_SERVER_URL:http://localhost:8082}
+    hyundai:
+      url: ${HYUNDAI_CARD_SERVER_URL:http://localhost:8083}

@@ -1,13 +1,19 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: kftc
-#  jpa:
-#    database-platform: org.hibernate.dialect.MySQLDialect
-#    hibernate:
-#      ddl-auto: update
-#    properties:
-#      hibernate:
-#        dialect: org.hibernate.dialect.MySQLDialect
   config:
-    import: application-datasource.yml, application-setting.yml
+    import: application-datasource.yml, application-setting.yml, application-local.yml
+  profiles:
+    active: datasource, setting, local
+  main:
+    lazy-initialization: false
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    com.kftc: DEBUG
 
