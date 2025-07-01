@@ -1,6 +1,7 @@
 package com.kftc.oauth.controller;
 
 import com.kftc.common.dto.BasicResponse;
+import com.kftc.common.util.CiGenerator;
 import com.kftc.oauth.domain.OAuthClient;
 import com.kftc.oauth.dto.TokenRequest;
 import com.kftc.oauth.dto.TokenResponse;
@@ -34,6 +35,7 @@ public class OAuthController {
     private final UserService userService;
     private final PhoneVerificationService phoneVerificationService;
     private final PasswordEncoder passwordEncoder;
+    private final CiGenerator ciGenerator;
     
     // 인증 세션 임시 저장소 (실제 환경에서는 Redis 등 사용)
     private final Map<String, AuthSession> authSessions = new ConcurrentHashMap<>();
@@ -85,16 +87,23 @@ public class OAuthController {
     /**
      * 휴대폰 인증 코드 발송
      */
-    @Operation(summary = "휴대폰 인증 코드 발송", description = "입력한 휴대폰번호로 인증 코드를 발송합니다.")
+    @Operation(summary = "휴대폰 인증 코드 발송", description = "입력한 사용자 정보로 휴대폰 인증 코드를 발송합니다.")
     @PostMapping("/phone/send")
     public ResponseEntity<BasicResponse> sendPhoneVerificationCode(
             @Parameter(description = "인증 세션 ID", required = true)
             @RequestParam("session_id") String sessionId,
             
             @Parameter(description = "휴대폰 번호", required = true)
-            @RequestParam("phone_number") String phoneNumber) {
+            @RequestParam("phone_number") String phoneNumber,
+            
+            @Parameter(description = "사용자 이름", required = true)
+            @RequestParam("user_name") String userName,
+            
+            @Parameter(description = "사용자 이메일", required = true)
+            @RequestParam("user_email") String userEmail) {
         
-        log.info("휴대폰 인증 코드 발송: sessionId={}, phoneNumber={}", sessionId, phoneNumber);
+        log.info("휴대폰 인증 코드 발송: sessionId={}, phoneNumber={}, userName={}, userEmail={}", 
+                sessionId, phoneNumber, userName, userEmail);
         
         // 세션 검증
         AuthSession session = authSessions.get(sessionId);
@@ -104,7 +113,11 @@ public class OAuthController {
         
         // 휴대폰 인증 코드 발송
         phoneVerificationService.sendVerificationCode(phoneNumber);
+        
+        // 세션에 사용자 정보 저장
         session.setPhoneNumber(phoneNumber);
+        session.setUserName(userName);
+        session.setUserEmail(userEmail);
         
         BasicResponse response = BasicResponse.builder()
                 .status(200)
@@ -143,12 +156,11 @@ public class OAuthController {
             Object result = phoneVerificationService.verifyCodeWithPassAuth(phoneNumber, verificationCode, null, null);
             session.setPhoneVerified(true);
             
-            // 휴대폰 기반으로 사용자 정보 생성/조회
-            String tempUserCi = "PHONE_CI_" + phoneNumber.replaceAll("[^0-9]", "");
-            String userId = oAuthService.processUserAuth(tempUserCi, "휴대폰인증사용자", phoneNumber);
+            // KISA 규격에 맞는 CI 생성 및 사용자 정보 생성/조회
+            String tempUserCi = ciGenerator.generateCi(phoneNumber);
+            String userId = oAuthService.processUserAuth(tempUserCi, session.getUserName(), phoneNumber, session.getUserEmail());
             session.setUserId(userId);
             session.setUserCi(tempUserCi);
-            session.setUserName("휴대폰인증사용자");
             
             // 바로 서비스 이용 동의 화면으로 이동
             String consentHtml = generateConsentHtml(sessionId, session);
@@ -588,13 +600,23 @@ public class OAuthController {
                     </div>
                     
                     <div id="phone-step">
-                        <h3>📱 휴대폰 인증</h3>
+                        <h3>📱 사용자 정보 입력</h3>
                         <p class="info-text">본인 명의의 휴대폰으로 인증을 진행합니다.</p>
                         
                         <div class="form-group">
+                            <label for="userName">이름</label>
+                            <input type="text" id="userName" placeholder="홍길동" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="userEmail">이메일</label>
+                            <input type="email" id="userEmail" placeholder="hong@example.com" required>
+                        </div>
+                        
+                        <div class="form-group">
                             <label for="phoneNumber">휴대폰 번호</label>
-                            <input type="tel" id="phoneNumber" placeholder="010-1234-5678" maxlength="13">
-                </div>
+                            <input type="tel" id="phoneNumber" placeholder="010-1234-5678" maxlength="13" required>
+                        </div>
                         
                         <button class="btn" onclick="sendVerificationCode()">인증번호 발송</button>
                     </div>
@@ -629,7 +651,19 @@ public class OAuthController {
                 });
                 
                 async function sendVerificationCode() {
+                    const userName = document.getElementById('userName').value.trim();
+                    const userEmail = document.getElementById('userEmail').value.trim();
                     phoneNumber = document.getElementById('phoneNumber').value.replace(/[^\\d]/g, '');
+                    
+                    if (!userName) {
+                        alert('이름을 입력해주세요.');
+                        return;
+                    }
+                    
+                    if (!userEmail || !userEmail.includes('@')) {
+                        alert('올바른 이메일을 입력해주세요.');
+                        return;
+                    }
                     
                     if (phoneNumber.length !== 11) {
                         alert('올바른 휴대폰 번호를 입력해주세요.');
@@ -640,7 +674,7 @@ public class OAuthController {
                         const response = await fetch('/oauth/phone/send', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `session_id=${sessionId}&phone_number=${phoneNumber}`
+                            body: `session_id=${sessionId}&phone_number=${phoneNumber}&user_name=${encodeURIComponent(userName)}&user_email=${encodeURIComponent(userEmail)}`
                         });
                         
                         const result = await response.json();
@@ -867,6 +901,7 @@ public class OAuthController {
         private String userId;
         private String userCi;
         private String userName;
+        private String userEmail;
         private String phoneNumber;
         private boolean phoneVerified = false;
         
@@ -888,6 +923,8 @@ public class OAuthController {
         public void setUserCi(String userCi) { this.userCi = userCi; }
         public String getUserName() { return userName; }
         public void setUserName(String userName) { this.userName = userName; }
+        public String getUserEmail() { return userEmail; }
+        public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
         public String getPhoneNumber() { return phoneNumber; }
         public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
         public boolean isPhoneVerified() { return phoneVerified; }
