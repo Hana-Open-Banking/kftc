@@ -248,7 +248,11 @@ public class OAuthService {
         return code;
     }
     
-    private OAuthClient validateClient(String clientId) {
+    /**
+     * 클라이언트 검증 (public 메서드)
+     */
+    @Transactional(readOnly = true)
+    public OAuthClient validateClient(String clientId) {
         return clientRepository.findByClientIdAndIsActiveTrue(clientId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "유효하지 않은 클라이언트입니다."));
     }
@@ -482,5 +486,26 @@ public class OAuthService {
         log.info("Authorization Code 발급 완료: code={}, userSeqNo={}", code, userSeqNo);
         
         return code;
+    }
+    
+    /**
+     * 사용자 인증 처리 (PASS 인증 결과 처리)
+     */
+    @Transactional
+    public String processUserAuth(String userCi, String userName, String phoneNumber) {
+        log.info("사용자 인증 처리: userCi={}, userName={}", userCi, userName);
+        
+        try {
+            // UserService를 통해 사용자 생성 또는 조회
+            String userSeqNo = userService.createOrGetUserByCi(userCi);
+            
+            log.info("사용자 인증 처리 완료: userSeqNo={}", userSeqNo);
+            return userSeqNo;
+        } catch (Exception e) {
+            log.warn("사용자 인증 처리 실패, 임시 사용자 생성: userCi={}", userCi, e);
+            
+            // 실패 시 CI를 기반으로 임시 사용자 ID 생성
+            return "temp_user_" + Math.abs(userCi.hashCode());
+        }
     }
 } 

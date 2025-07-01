@@ -92,7 +92,7 @@ public class CoolSmsService {
             Message message = new Message();
             message.setFrom(fromNumber);
             message.setTo(phoneNumber);
-            message.setText(String.format("[KFTC] 본인확인 인증번호는 [%s]입니다. 타인 노출 금지", verificationCode));
+            message.setText(String.format("[PASS] 본인확인 인증번호는 [%s]입니다. 타인 노출 금지", verificationCode));
             
             SingleMessageSentResponse response = this.messageService.sendOne(new SingleMessageSendingRequest(message));
             
