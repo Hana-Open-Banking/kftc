@@ -326,27 +326,37 @@ public class OAuthController {
     /**
      * 토큰 검증
      */
-    @Operation(summary = "토큰 검증", description = "Access Token의 유효성을 검증합니다.")
+    @Operation(summary = "토큰 검증", description = "Access Token의 유효성을 검증합니다.", 
+               security = {@io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "BearerAuth")})
     @PostMapping("/introspect")
     public ResponseEntity<BasicResponse> introspect(
-            @Parameter(description = "Bearer 토큰") @RequestHeader("Authorization") String authorization) {
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization) {
         
         try {
+            log.info("토큰 검증 요청");
+            
             // Bearer 토큰에서 실제 토큰 추출
-            String token = authorization.replace("Bearer ", "");
+            String token;
+            if (authorization.startsWith("Bearer ")) {
+                token = authorization.substring(7); // "Bearer " 제거
+            } else {
+                token = authorization; // 토큰만 입력된 경우
+            }
+            
+            log.info("토큰 검증 시작: {}", token.substring(0, Math.min(token.length(), 20)) + "...");
             
             // 토큰 유효성 검증
             boolean isValid = oAuthService.validateAccessToken(token);
             
             if (isValid) {
-                log.info("토큰 검증 성공: token={}", token.substring(0, Math.min(token.length(), 10)) + "...");
+                log.info("토큰 검증 성공");
                 return ResponseEntity.ok(BasicResponse.builder()
                         .status(200)
                         .message("토큰이 유효합니다.")
                         .data(null)
                         .build());
             } else {
-                log.warn("토큰 검증 실패: token={}", token.substring(0, Math.min(token.length(), 10)) + "...");
+                log.warn("토큰 검증 실패");
                 return ResponseEntity.badRequest().body(BasicResponse.builder()
                         .status(400)
                         .message("유효하지 않은 토큰입니다.")
