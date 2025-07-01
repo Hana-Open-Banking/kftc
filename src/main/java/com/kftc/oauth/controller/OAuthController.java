@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,9 @@ public class OAuthController {
     private final PhoneVerificationService phoneVerificationService;
     private final PasswordEncoder passwordEncoder;
     private final CiGenerator ciGenerator;
+    
+    @Value("${oauth.client.redirect-uri}")
+    private String configuredRedirectUri;
     
     // 인증 세션 임시 저장소 (실제 환경에서는 Redis 등 사용)
     private final Map<String, AuthSession> authSessions = new ConcurrentHashMap<>();
@@ -932,7 +936,7 @@ public class OAuthController {
     }
     
     private String generateTestClientHtml() {
-        return """
+        return ("""
             <!DOCTYPE html>
             <html lang="ko">
             <head>
@@ -977,7 +981,7 @@ public class OAuthController {
                     <div class="info-box">
                         <div class="info-title">ℹ️ 테스트 정보</div>
                         <p><strong>Client ID:</strong> kftc-openbanking-client</p>
-                        <p><strong>Redirect URI:</strong> http://localhost:8080/oauth/2.0/callback</p>
+                        <p><strong>Redirect URI:</strong> %s</p>
                         <p><strong>Scope:</strong> login|inquiry</p>
                     </div>
                 </div>
@@ -988,7 +992,7 @@ public class OAuthController {
                         const authUrl = '/oauth/pass?' + new URLSearchParams({
                             response_type: 'code',
                             client_id: 'kftc-openbanking-client',
-                            redirect_uri: 'http://localhost:8080/oauth/2.0/callback',
+                            redirect_uri: '%s',
                             scope: 'login|inquiry',
                             state: state
                         });
@@ -999,7 +1003,7 @@ public class OAuthController {
                 </script>
             </body>
             </html>
-            """;
+            """).formatted(configuredRedirectUri, configuredRedirectUri, configuredRedirectUri);
     }
     
     private String generateOAuthCallbackSuccessHtml(String code, String state) {
@@ -1047,7 +1051,7 @@ public class OAuthController {
                             <li><strong>code:</strong> %s</li>
                             <li><strong>client_id:</strong> kftc-openbanking-client</li>
                             <li><strong>client_secret:</strong> kftc-openbanking-secret</li>
-                            <li><strong>redirect_uri:</strong> http://localhost:8080/oauth/2.0/callback</li>
+                            <li><strong>redirect_uri:</strong> %s</li>
                             <li><strong>grant_type:</strong> authorization_code</li>
                         </ul>
                     </div>
@@ -1104,7 +1108,7 @@ public class OAuthController {
                                     code: authCode,
                                     client_id: 'kftc-openbanking-client',
                                     client_secret: 'kftc-openbanking-secret',
-                                    redirect_uri: 'http://localhost:8080/oauth/2.0/callback',
+                                    redirect_uri: '%s',
                                     grant_type: 'authorization_code'
                                 })
                             });
@@ -1144,7 +1148,10 @@ public class OAuthController {
                 java.time.LocalDateTime.now().toString(),
                 code,
                 code,
-                state != null ? state : "없음"
+                configuredRedirectUri,
+                code,
+                state != null ? state : "없음",
+                configuredRedirectUri
             );
     }
     

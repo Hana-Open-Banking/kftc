@@ -106,8 +106,8 @@ public class DataInitializer implements CommandLineRunner {
         log.info("      http://localhost:8080/oauth/test/client");
         log.info("");
         log.info("   2. 직접 OAuth 인증:");
-        log.info("      http://localhost:8080/oauth/pass?response_type=code&client_id={}&redirect_uri=http%3A//localhost%3A8080/oauth/test/callback&scope=login|inquiry&state=test123", 
-                 clientId);
+        log.info("      http://localhost:8080/oauth/pass?response_type=code&client_id={}&redirect_uri={}&scope=login|inquiry&state=test123", 
+                 clientId, java.net.URLEncoder.encode(redirectUri, java.nio.charset.StandardCharsets.UTF_8));
         log.info("");
         log.info("   3. 토큰 발급 (cURL):");
         log.info("      curl -X POST http://localhost:8080/oauth/token \\");
@@ -115,7 +115,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("        -d \"code=[받은_코드]\" \\");
         log.info("        -d \"client_id={}\" \\", clientId);
         log.info("        -d \"client_secret={}\" \\", clientSecret);
-        log.info("        -d \"redirect_uri=http://localhost:8080/oauth/test/callback\"");
+        log.info("        -d \"redirect_uri={}\"", redirectUri);
         log.info("");
         
         // 클라이언트 관리

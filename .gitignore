@@ -37,7 +37,6 @@ out/
 .vscode/
 
 ### Local Configuration ###
-application.yml
 application-local.yml
 application-dev.yml
 .env
