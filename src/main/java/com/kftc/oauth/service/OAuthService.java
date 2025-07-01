@@ -493,11 +493,19 @@ public class OAuthService {
      */
     @Transactional
     public String processUserAuth(String userCi, String userName, String phoneNumber) {
-        log.info("사용자 인증 처리: userCi={}, userName={}", userCi, userName);
+        return processUserAuth(userCi, userName, phoneNumber, null);
+    }
+    
+    /**
+     * 사용자 인증 처리 (PASS 인증 결과 처리) - 이메일 포함
+     */
+    @Transactional
+    public String processUserAuth(String userCi, String userName, String phoneNumber, String userEmail) {
+        log.info("사용자 인증 처리: userCi={}, userName={}, userEmail={}", userCi, userName, userEmail);
         
         try {
-            // UserService를 통해 사용자 생성 또는 조회
-            String userSeqNo = userService.createOrGetUserByCi(userCi);
+            // UserService를 통해 사용자 생성 또는 조회 (이름, 이메일 포함)
+            String userSeqNo = userService.createOrGetUserByCi(userCi, userName, userEmail);
             
             log.info("사용자 인증 처리 완료: userSeqNo={}", userSeqNo);
             return userSeqNo;

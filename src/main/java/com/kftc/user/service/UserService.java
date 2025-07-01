@@ -26,17 +26,43 @@ public class UserService {
     private final KftcInternalService kftcInternalService;
     
     /**
-     * CI로 사용자 생성 또는 조회 (오픈뱅킹 플로우용)
+     * CI로 사용자 생성 또는 조회 (오픈뱅킹 플로우용)  
      */
     @Transactional
     public String createOrGetUserByCi(String ci) {
-        log.info("CI로 사용자 생성/조회: ci={}", ci.substring(0, 10) + "...");
+        return createOrGetUserByCi(ci, null, null);
+    }
+    
+    /**
+     * CI로 사용자 생성 또는 조회 - 이름과 이메일 포함 (PASS 인증용)
+     */
+    @Transactional
+    public String createOrGetUserByCi(String ci, String userName, String userEmail) {
+        log.info("CI로 사용자 생성/조회: ci={}, userName={}, userEmail={}", 
+                ci.substring(0, 10) + "...", userName, userEmail);
         
         // 기존 사용자 조회
         Optional<User> existingUser = userRepository.findByUserCi(ci);
         if (existingUser.isPresent()) {
             User user = existingUser.get();
             log.info("기존 사용자 발견: userSeqNo={}", user.getUserSeqNo());
+            
+            // 기존 사용자가 있으면 이름과 이메일 정보 업데이트
+            if (userName != null || userEmail != null) {
+                User updatedUser = User.builder()
+                        .userSeqNo(user.getUserSeqNo())
+                        .userCi(user.getUserCi())
+                        .userName(userName != null ? userName : user.getUserName())
+                        .userType(user.getUserType())
+                        .userStatus(user.getUserStatus())
+                        .userEmail(userEmail != null ? userEmail : user.getUserEmail())
+                        .userInfo(user.getUserInfo())
+                        .build();
+                
+                userRepository.save(updatedUser);
+                log.info("기존 사용자 정보 업데이트 완료: userSeqNo={}", user.getUserSeqNo());
+            }
+            
             return user.getUserSeqNo();
         }
         
@@ -45,16 +71,17 @@ public class UserService {
         User newUser = User.builder()
                 .userSeqNo(userSeqNo)
                 .userCi(ci)
-                .userName("사용자" + userSeqNo) // 더 간결한 이름
+                .userName(userName != null ? userName : "사용자" + userSeqNo)
                 .userType("PERSONAL")
                 .userStatus("PENDING") // 동의 전이므로 PENDING 상태
-                .userEmail(null)
+                .userEmail(userEmail)
                 .userInfo(null)
                 .build();
         
         User savedUser = userRepository.save(newUser);
-        log.info("새 사용자 생성 완료: userSeqNo={}, ci={}", 
-                savedUser.getUserSeqNo(), ci.substring(0, 10) + "...");
+        log.info("새 사용자 생성 완료: userSeqNo={}, userName={}, userEmail={}, ci={}", 
+                savedUser.getUserSeqNo(), savedUser.getUserName(), savedUser.getUserEmail(), 
+                ci.substring(0, 10) + "...");
         
         return savedUser.getUserSeqNo();
     }
