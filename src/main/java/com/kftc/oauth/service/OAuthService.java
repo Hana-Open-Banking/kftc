@@ -88,20 +88,50 @@ public class OAuthService {
      * 액세스 토큰 발급 (Authorization Code Grant)
      */
     public TokenResponse issueTokenByAuthCode(TokenRequest request) {
+        log.info("=== 토큰 발급 시작 ===");
+        log.info("요청 코드: {}", request.getCode());
+        log.info("요청 클라이언트 ID: {}", request.getClientId());
+        log.info("요청 리다이렉트 URI: {}", request.getRedirectUri());
+        
         // 클라이언트 인증
         OAuthClient client = authenticateClient(request.getClientId(), request.getClientSecret());
+        log.info("클라이언트 인증 성공: {}", client.getClientId());
         
         // 인증 코드 검증
         AuthorizationCode authCode = codeRepository.findByCodeAndIsUsedFalse(request.getCode())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "유효하지 않은 인증 코드입니다."));
+                .orElseThrow(() -> {
+                    log.error("인증 코드를 찾을 수 없거나 이미 사용됨: {}", request.getCode());
+                    return new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "유효하지 않은 인증 코드입니다.");
+                });
+        
+        log.info("=== 인증 코드 정보 ===");
+        log.info("DB 저장 코드: {}", authCode.getCode());
+        log.info("DB 저장 클라이언트 ID: {}", authCode.getClientId());
+        log.info("DB 저장 리다이렉트 URI: {}", authCode.getRedirectUri());
+        log.info("DB 저장 사용자 ID: {}", authCode.getUserId());
+        log.info("DB 저장 만료시간: {}", authCode.getExpiresAt());
+        log.info("현재 시간: {}", java.time.LocalDateTime.now());
+        log.info("만료 여부: {}", authCode.isExpired());
         
         if (authCode.isExpired()) {
+            log.error("인증 코드가 만료됨: {}", authCode.getExpiresAt());
             throw new BusinessException(ErrorCode.INVALID_VALUE, "만료된 인증 코드입니다.");
         }
         
+        log.info("=== 코드 정보 일치 검증 ===");
+        log.info("클라이언트 ID 일치: {} vs {} = {}", 
+                authCode.getClientId(), request.getClientId(), 
+                authCode.getClientId().equals(request.getClientId()));
+        log.info("리다이렉트 URI 일치: {} vs {} = {}", 
+                authCode.getRedirectUri(), request.getRedirectUri(), 
+                authCode.getRedirectUri().equals(request.getRedirectUri()));
+        
         if (!authCode.getClientId().equals(request.getClientId()) ||
             !authCode.getRedirectUri().equals(request.getRedirectUri())) {
-            throw new BusinessException(ErrorCode.INVALID_VALUE, "인증 코드 정보가 일치하지 않습니다.");
+            log.error("인증 코드 정보 불일치!");
+            log.error("클라이언트 ID - DB: [{}], 요청: [{}]", authCode.getClientId(), request.getClientId());
+            log.error("리다이렉트 URI - DB: [{}], 요청: [{}]", authCode.getRedirectUri(), request.getRedirectUri());
+            throw new BusinessException(ErrorCode.INVALID_VALUE, "해당 코드 정보가 일치하지 않습니다.");
         }
         
         // 코드 사용 처리
@@ -248,7 +278,11 @@ public class OAuthService {
         return code;
     }
     
-    private OAuthClient validateClient(String clientId) {
+    /**
+     * 클라이언트 검증 (public 메서드)
+     */
+    @Transactional(readOnly = true)
+    public OAuthClient validateClient(String clientId) {
         return clientRepository.findByClientIdAndIsActiveTrue(clientId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, "유효하지 않은 클라이언트입니다."));
     }
@@ -482,5 +516,34 @@ public class OAuthService {
         log.info("Authorization Code 발급 완료: code={}, userSeqNo={}", code, userSeqNo);
         
         return code;
+    }
+    
+    /**
+     * 사용자 인증 처리 (PASS 인증 결과 처리)
+     */
+    @Transactional
+    public String processUserAuth(String userCi, String userName, String phoneNumber) {
+        return processUserAuth(userCi, userName, phoneNumber, null);
+    }
+    
+    /**
+     * 사용자 인증 처리 (PASS 인증 결과 처리) - 이메일 포함
+     */
+    @Transactional
+    public String processUserAuth(String userCi, String userName, String phoneNumber, String userEmail) {
+        log.info("사용자 인증 처리: userCi={}, userName={}, userEmail={}", userCi, userName, userEmail);
+        
+        try {
+            // UserService를 통해 사용자 생성 또는 조회 (이름, 이메일 포함)
+            String userSeqNo = userService.createOrGetUserByCi(userCi, userName, userEmail);
+            
+            log.info("사용자 인증 처리 완료: userSeqNo={}", userSeqNo);
+            return userSeqNo;
+        } catch (Exception e) {
+            log.warn("사용자 인증 처리 실패, 임시 사용자 생성: userCi={}", userCi, e);
+            
+            // 실패 시 CI를 기반으로 임시 사용자 ID 생성
+            return "temp_user_" + Math.abs(userCi.hashCode());
+        }
     }
 } 
