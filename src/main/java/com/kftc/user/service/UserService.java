@@ -212,4 +212,18 @@ public class UserService {
         userRepository.save(updatedUser);
         log.info("사용자 상태 활성화 완료: userSeqNo={}", userSeqNo);
     }
+
+    /**
+     * user_seq_no로 user_ci 조회 (카드사 연동용)
+     */
+    @Transactional(readOnly = true)
+    public String getUserCiByUserSeqNo(String userSeqNo) {
+        log.debug("userSeqNo로 userCi 조회: userSeqNo={}", userSeqNo);
+        
+        User user = userRepository.findByUserSeqNo(userSeqNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, 
+                    "해당 사용자 일련번호의 사용자를 찾을 수 없습니다: " + userSeqNo));
+        
+        return user.getUserCi();
+    }
 } 
