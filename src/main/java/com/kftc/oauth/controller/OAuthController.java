@@ -415,7 +415,7 @@ public class OAuthController {
     }
     
     // =============== 테스트용 클라이언트 시뮬레이터 ===============
-    
+
     /**
      * 테스트용 클라이언트 시뮬레이터 - OAuth 인증 시작
      */
@@ -426,7 +426,7 @@ public class OAuthController {
                 .header("Content-Type", "text/html; charset=UTF-8")
                 .body(generateTestClientHtml());
     }
-    
+
     /**
      * 테스트용 클라이언트 시뮬레이터 - Authorization Code 수신
      */
@@ -479,7 +479,7 @@ public class OAuthController {
                 .header("Content-Type", "text/html; charset=UTF-8")
                 .body(generateClientRegistrationHtml());
     }
-    
+
     /**
      * 클라이언트 등록 처리
      */
@@ -488,61 +488,61 @@ public class OAuthController {
     public ResponseEntity<BasicResponse> registerClient(
             @Parameter(description = "클라이언트명", required = true)
             @RequestParam("client_name") String clientName,
-            
+
             @Parameter(description = "Redirect URI", required = true)
             @RequestParam("redirect_uri") String redirectUri,
-            
+
             @Parameter(description = "서비스 도메인", required = true)
             @RequestParam("service_domain") String serviceDomain,
-            
+
             @Parameter(description = "담당자 이메일", required = true)
             @RequestParam("contact_email") String contactEmail,
-            
+
             @Parameter(description = "서비스 설명", required = false)
             @RequestParam(value = "description", required = false) String description) {
-        
-        log.info("클라이언트 등록 요청: clientName={}, redirectUri={}, serviceDomain={}", 
+
+        log.info("클라이언트 등록 요청: clientName={}, redirectUri={}, serviceDomain={}",
                 clientName, redirectUri, serviceDomain);
-        
+
         try {
             // 입력값 검증
             if (clientName == null || clientName.trim().isEmpty()) {
                 throw new IllegalArgumentException("클라이언트명은 필수입니다.");
             }
-            
+
             if (redirectUri == null || redirectUri.trim().isEmpty()) {
                 throw new IllegalArgumentException("Redirect URI는 필수입니다.");
             }
-            
+
             if (!redirectUri.startsWith("http://") && !redirectUri.startsWith("https://")) {
                 throw new IllegalArgumentException("Redirect URI는 http:// 또는 https://로 시작해야 합니다.");
             }
-            
+
             // 도메인 검증
             if (serviceDomain == null || serviceDomain.trim().isEmpty()) {
                 throw new IllegalArgumentException("서비스 도메인은 필수입니다.");
             }
-            
+
             // redirect_uri와 service_domain이 일치하는지 확인
             if (!redirectUri.contains(serviceDomain)) {
                 throw new IllegalArgumentException("Redirect URI와 서비스 도메인이 일치하지 않습니다.");
             }
-            
+
             // 클라이언트 ID/Secret 생성
             String clientId = generateClientId();
             String clientSecret = generateClientSecret();
-            
+
             // 클라이언트 등록 (실제 구현에서는 승인 대기 상태로 설정)
             OAuthClient newClient = OAuthClient.builder()
                     .clientId(clientId)
                     .clientSecret(passwordEncoder.encode(clientSecret))
                     .clientName(clientName.trim())
                     .redirectUri(redirectUri.trim())
-                    .scope("login|inquiry") // 기본 스코프
+                    .scope("login|inquiry") // 기본 스코프 (파이프 문자 그대로 저장)
                     .isActive(false) // 승인 대기 상태
                     .clientUseCode("PENDING") // 승인 대기
                     .build();
-            
+
             // DB에 저장하는 대신 로그로 출력 (실제 서비스에서는 DB 저장)
             log.info("🔐 새 클라이언트 등록 완료:");
             log.info("  - Client ID: {}", clientId);
@@ -552,18 +552,20 @@ public class OAuthController {
             log.info("  - Service Domain: {}", serviceDomain);
             log.info("  - Contact Email: {}", contactEmail);
             log.info("  - Description: {}", description);
-            
+            log.info("  - Scope: login|inquiry");
+
             return ResponseEntity.ok(BasicResponse.builder()
                     .status(200)
                     .message("클라이언트 등록이 완료되었습니다. 승인까지 1-2일 소요됩니다.")
                     .data(Map.of(
                             "client_id", clientId,
                             "client_secret", clientSecret,
+                            "scope", "login|inquiry",
                             "status", "PENDING",
                             "message", "관리자 승인 후 사용 가능합니다."
                     ))
                     .build());
-                    
+
         } catch (Exception e) {
             log.error("클라이언트 등록 실패", e);
             return ResponseEntity.badRequest().body(BasicResponse.builder()
@@ -944,78 +946,83 @@ public class OAuthController {
         public boolean isPhoneVerified() { return phoneVerified; }
         public void setPhoneVerified(boolean phoneVerified) { this.phoneVerified = phoneVerified; }
     }
-    
+
     private String generateTestClientHtml() {
         return ("""
-            <!DOCTYPE html>
-            <html lang="ko">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>🧪 OAuth 테스트 클라이언트</title>
-                <style>
-                    body { font-family: 'Malgun Gothic', Arial, sans-serif; text-align: center; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0; }
-                    .client-container { max-width: 500px; margin: 0 auto; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-                    .client-title { color: #333; margin-bottom: 30px; font-size: 28px; font-weight: bold; }
-                    .description { color: #666; margin-bottom: 30px; line-height: 1.6; }
-                    .oauth-btn { background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 15px 30px; border: none; border-radius: 50px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; margin: 10px 0; transition: transform 0.2s; }
-                    .oauth-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-                    .info-box { background-color: #e3f2fd; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: left; }
-                    .info-title { font-weight: bold; color: #1976d2; margin-bottom: 10px; }
-                    .flow-step { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea; }
-                    .test-icon { font-size: 48px; margin-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="client-container">
-                    <div class="test-icon">🧪</div>
-                    <h1 class="client-title">OAuth 테스트 클라이언트</h1>
-                    <p class="description">
-                        실제 클라이언트 앱을 시뮬레이션하여 OAuth 2.0 인증 플로우를 테스트합니다.
-                    </p>
-                    
-                    <div class="info-box">
-                        <div class="info-title">📋 OAuth 플로우</div>
-                        <div class="flow-step">1️⃣ 오픈뱅킹 로그인 버튼 클릭</div>
-                        <div class="flow-step">2️⃣ 오픈뱅킹 센터로 리디렉트</div>
-                        <div class="flow-step">3️⃣ 휴대폰 본인인증 수행</div>
-                        <div class="flow-step">4️⃣ 서비스 이용 동의</div>
-                        <div class="flow-step">5️⃣ Authorization Code 수신</div>  
-                        <div class="flow-step">6️⃣ Access Token 자동 발급</div>
-                    </div>
-                    
-                    <button class="oauth-btn" onclick="startOAuthFlow()">
-                        🏦 오픈뱅킹 로그인 시작
-                    </button>
-                    
-                    <div class="info-box">
-                        <div class="info-title">ℹ️ 테스트 정보</div>
-                        <p><strong>Client ID:</strong> kftc-openbanking-client</p>
-                        <p><strong>Redirect URI:</strong> %s</p>
-                        <p><strong>Scope:</strong> login|inquiry</p>
-                    </div>
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>🧪 OAuth 테스트 클라이언트</title>
+            <style>
+                body { font-family: 'Malgun Gothic', Arial, sans-serif; text-align: center; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0; }
+                .client-container { max-width: 500px; margin: 0 auto; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+                .client-title { color: #333; margin-bottom: 30px; font-size: 28px; font-weight: bold; }
+                .description { color: #666; margin-bottom: 30px; line-height: 1.6; }
+                .oauth-btn { background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 15px 30px; border: none; border-radius: 50px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; margin: 10px 0; transition: transform 0.2s; }
+                .oauth-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+                .info-box { background-color: #e3f2fd; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: left; }
+                .info-title { font-weight: bold; color: #1976d2; margin-bottom: 10px; }
+                .flow-step { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #667eea; }
+                .test-icon { font-size: 48px; margin-bottom: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="client-container">
+                <div class="test-icon">🧪</div>
+                <h1 class="client-title">OAuth 테스트 클라이언트</h1>
+                <p class="description">
+                    실제 클라이언트 앱을 시뮬레이션하여 OAuth 2.0 인증 플로우를 테스트합니다.
+                </p>
+                
+                <div class="info-box">
+                    <div class="info-title">📋 OAuth 플로우</div>
+                    <div class="flow-step">1️⃣ 오픈뱅킹 로그인 버튼 클릭</div>
+                    <div class="flow-step">2️⃣ 오픈뱅킹 센터로 리디렉트</div>
+                    <div class="flow-step">3️⃣ 휴대폰 본인인증 수행</div>
+                    <div class="flow-step">4️⃣ 서비스 이용 동의</div>
+                    <div class="flow-step">5️⃣ Authorization Code 수신</div>  
+                    <div class="flow-step">6️⃣ Access Token 자동 발급</div>
                 </div>
                 
-                <script>
-                    function startOAuthFlow() {
-                        const state = 'test_' + Date.now();
-                        const authUrl = '/oauth/pass?' + new URLSearchParams({
-                            response_type: 'code',
-                            client_id: 'kftc-openbanking-client',
-                            redirect_uri: '%s',
-                            scope: 'login|inquiry',
-                            state: state
-                        });
-                        
-                        console.log('OAuth 인증 시작:', authUrl);
-                        window.location.href = authUrl;
-                    }
-                </script>
-            </body>
-            </html>
-            """).formatted(configuredRedirectUri, configuredRedirectUri, configuredRedirectUri);
+                <button class="oauth-btn" onclick="startOAuthFlow()">
+                    🏦 오픈뱅킹 로그인 시작
+                </button>
+                
+                <div class="info-box">
+                    <div class="info-title">ℹ️ 테스트 정보</div>
+                    <p><strong>Client ID:</strong> kftc-openbanking-client</p>
+                    <p><strong>Redirect URI:</strong> %s</p>
+                    <p><strong>Scope:</strong> login|inquiry</p>
+                </div>
+            </div>
+            
+            <script>
+                function startOAuthFlow() {
+                    const state = 'test_' + Date.now();
+                    
+                    // scope 파이프 문자를 URL 인코딩
+                    const scope = encodeURIComponent('login|inquiry');
+                    
+                    const authUrl = '/oauth/pass?' + new URLSearchParams({
+                        response_type: 'code',
+                        client_id: 'kftc-openbanking-client',
+                        redirect_uri: '%s',
+                        scope: 'login|inquiry', // URLSearchParams가 자동으로 인코딩
+                        state: state
+                    });
+                    
+                    console.log('OAuth 인증 시작:', authUrl);
+                    window.location.href = authUrl;
+                }
+            </script>
+        </body>
+        </html>
+        """).formatted(configuredRedirectUri, configuredRedirectUri, configuredRedirectUri);
     }
-    
+
+
     private String generateOAuthCallbackSuccessHtml(String code, String state) {
         return """
             <!DOCTYPE html>
