@@ -11,7 +11,7 @@ oauth:
     scope: login|inquiry|transfer
     client-use-code: F001234560
   token:
-    access-token-validity: 3600  # 1시간 (초)
+    access-token-validity: 360000  # 1시간 (초)
     refresh-token-validity: 86400  # 24시간 (초)
     jwt-secret: kftc-openbanking-jwt-secret-key-for-token-generation-and-validation
 
@@ -34,12 +34,26 @@ kftc:
   open-banking:
     client-use-code: F001234560
 
-# 카드사 서버 연동 설정
-card:
-  company:
-    kb:
-      url: ${KB_CARD_SERVER_URL:http://localhost:8081}
-    samsung:
-      url: ${SAMSUNG_CARD_SERVER_URL:http://localhost:8082}
-    hyundai:
-      url: ${HYUNDAI_CARD_SERVER_URL:http://localhost:8083}
+# 금융기관 서버 연동 설정
+financial:
+  institutions:
+    shinhan-bank:
+      code: "088"
+      name: "신한은행"
+      type: "BANK"
+      base-url: http://localhost:8082
+    kookmin-card:
+      code: "301"
+      name: "국민카드"  
+      type: "CARD"
+      base-url: http://localhost:8083
+    hyundai-capital:
+      code: "054"
+      name: "현대캐피탈"
+      type: "CAPITAL"
+      base-url: http://localhost:8085
+    samsung-fire:
+      code: "221"
+      name: "삼성화재"
+      type: "INSURANCE"
+      base-url: http://localhost:8084

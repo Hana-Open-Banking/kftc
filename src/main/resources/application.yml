@@ -17,3 +17,87 @@ logging:
     org.springframework.web: DEBUG
     com.kftc: DEBUG
 
+# 은행 API 설정
+bank:
+  configs:
+    shinhan:
+      base-url: ${SHINHAN_BANK_BASE_URL:http://localhost:8082}
+      api-key: ${SHINHAN_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${SHINHAN_BANK_ENABLED:true}
+    kookmin:
+      base-url: ${KOOKMIN_BANK_BASE_URL:http://localhost:9091}
+      api-key: ${KOOKMIN_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${KOOKMIN_BANK_ENABLED:false}
+    woori:
+      base-url: ${WOORI_BANK_BASE_URL:http://localhost:9092}
+      api-key: ${WOORI_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${WOORI_BANK_ENABLED:false}
+    hana:
+      base-url: ${HANA_BANK_BASE_URL:http://localhost:9093}
+      api-key: ${HANA_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${HANA_BANK_ENABLED:false}
+    nh:
+      base-url: ${NH_BANK_BASE_URL:http://localhost:9094}
+      api-key: ${NH_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${NH_BANK_ENABLED:false}
+    ibk:
+      base-url: ${IBK_BANK_BASE_URL:http://localhost:9095}
+      api-key: ${IBK_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${IBK_BANK_ENABLED:false}
+    kdb:
+      base-url: ${KDB_BANK_BASE_URL:http://localhost:9096}
+      api-key: ${KDB_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${KDB_BANK_ENABLED:false}
+    kakao:
+      base-url: ${KAKAO_BANK_BASE_URL:http://localhost:9097}
+      api-key: ${KAKAO_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${KAKAO_BANK_ENABLED:false}
+    toss:
+      base-url: ${TOSS_BANK_BASE_URL:http://localhost:9098}
+      api-key: ${TOSS_BANK_API_KEY:}
+      timeout: 30000
+      enabled: ${TOSS_BANK_ENABLED:false}
+
+# Feign 설정
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 30000
+      shinhan-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      kookmin-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      woori-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      hana-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      nh-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      ibk-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      kdb-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      kakao-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+      toss-bank:
+        connectTimeout: 5000
+        readTimeout: 30000
+
