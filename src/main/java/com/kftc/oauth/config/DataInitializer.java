@@ -89,28 +89,28 @@ public class DataInitializer implements CommandLineRunner {
         
         // 서버 기본 정보
         log.info("📌 서버 정보:");
-        log.info("   - 서버 URL: http://localhost:8080");
+        log.info("   - 서버 URL: http://34.47.102.221:8080");
         log.info("   - 환경: 개발/테스트");
         log.info("   - OAuth Client ID: {}", clientId);
         log.info("");
         
         // Swagger UI
         log.info("📚 API 문서 (Swagger):");
-        log.info("   - Swagger UI: http://localhost:8080/swagger-ui/index.html");
-        log.info("   - API Docs: http://localhost:8080/v3/api-docs");
+        log.info("   - Swagger UI: http://34.47.102.221:8080/swagger-ui/index.html");
+        log.info("   - API Docs: http://34.47.102.221:8080/v3/api-docs");
         log.info("");
         
         // OAuth 테스트 URL들
         log.info("🔐 OAuth 2.0 테스트:");
         log.info("   1. 테스트 클라이언트 (권장):");
-        log.info("      http://localhost:8080/oauth/test/client");
+        log.info("      http://34.47.102.221:8080/oauth/test/client");
         log.info("");
         log.info("   2. 직접 OAuth 인증:");
-        log.info("      http://localhost:8080/oauth/pass?response_type=code&client_id={}&redirect_uri={}&scope=login|inquiry&state=test123", 
+        log.info("      http://34.47.102.221:8080/oauth/pass?response_type=code&client_id={}&redirect_uri={}&scope=login|inquiry&state=test123",
                  clientId, java.net.URLEncoder.encode(redirectUri, java.nio.charset.StandardCharsets.UTF_8));
         log.info("");
         log.info("   3. 토큰 발급 (cURL):");
-        log.info("      curl -X POST http://localhost:8080/oauth/token \\");
+        log.info("      curl -X POST http://34.47.102.221:8080/oauth/token \\");
         log.info("        -d \"grant_type=authorization_code\" \\");
         log.info("        -d \"code=[받은_코드]\" \\");
         log.info("        -d \"client_id={}\" \\", clientId);
@@ -120,8 +120,8 @@ public class DataInitializer implements CommandLineRunner {
         
         // 클라이언트 관리
         log.info("🏢 클라이언트 관리:");
-        log.info("   - 클라이언트 등록: http://localhost:8080/oauth/register/client");
-        log.info("   - 등록된 클라이언트 조회: http://localhost:8080/debug/oauth-clients");
+        log.info("   - 클라이언트 등록: http://34.47.102.221:8080/oauth/register/client");
+        log.info("   - 등록된 클라이언트 조회: http://34.47.102.221:8080/debug/oauth-clients");
         log.info("");
         
         // 오픈뱅킹 API 테스트
@@ -148,7 +148,7 @@ public class DataInitializer implements CommandLineRunner {
         // 테스트 시나리오
         log.info("🧪 OAuth 테스트 시나리오:");
         log.info("   📱 간편 테스트 (권장):");
-        log.info("     1. http://localhost:8080/oauth/test/client 접속");
+        log.info("     1. http://34.47.102.221:8080/oauth/test/client 접속");
         log.info("     2. '오픈뱅킹 로그인 시작' 버튼 클릭");
         log.info("     3. 휴대폰번호 입력 (아무 번호나 가능)");
         log.info("     4. 인증번호 '123456' 입력");
@@ -156,7 +156,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("     6. 자동으로 토큰 발급까지 완료!");
         log.info("");
         log.info("   🏢 클라이언트 등록 테스트:");
-        log.info("     1. http://localhost:8080/oauth/register/client 접속");
+        log.info("     1. http://34.47.102.221:8080/oauth/register/client 접속");
         log.info("     2. 서비스 정보 입력 (테스트용)");
         log.info("     3. 등록 신청 (승인 대기 상태로 생성)");
         log.info("     4. 로그에서 발급된 Client ID/Secret 확인");

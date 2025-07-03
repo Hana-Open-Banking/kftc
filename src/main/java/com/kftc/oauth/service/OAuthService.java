@@ -108,7 +108,9 @@ public class OAuthService {
         log.info("DB 저장 코드: {}", authCode.getCode());
         log.info("DB 저장 클라이언트 ID: {}", authCode.getClientId());
         log.info("DB 저장 리다이렉트 URI: {}", authCode.getRedirectUri());
-        log.info("DB 저장 사용자 ID: {}", authCode.getUserId());
+        log.info("DB 저장 사용자 ID (userId): [{}]", authCode.getUserId());
+        log.info("사용자 ID 타입: {}", authCode.getUserId() != null ? authCode.getUserId().getClass().getSimpleName() : "null");
+        log.info("사용자 ID 길이: {}", authCode.getUserId() != null ? authCode.getUserId().length() : 0);
         log.info("DB 저장 만료시간: {}", authCode.getExpiresAt());
         log.info("현재 시간: {}", java.time.LocalDateTime.now());
         log.info("만료 여부: {}", authCode.isExpired());
@@ -305,9 +307,13 @@ public class OAuthService {
     }
     
     private TokenResponse generateTokenResponse(OAuthClient client, String userId, String scope) {
+        log.info("=== 토큰 응답 생성 시작 ===");
+        log.info("입력 파라미터 - clientId: {}, userId: [{}], scope: {}", client.getClientId(), userId, scope);
+        
         // JWT 토큰 생성
         String accessToken = jwtTokenProvider.generateAccessToken(client.getClientId(), userId, scope);
         String refreshToken = jwtTokenProvider.generateRefreshToken(client.getClientId(), userId);
+        log.info("JWT 토큰 생성 완료");
         
         // DB에 토큰 저장
         LocalDateTime now = LocalDateTime.now();
@@ -322,13 +328,14 @@ public class OAuthService {
                 .build();
         
         tokenRepository.save(token);
-        
-        log.info("토큰 발급 완료: clientId={}, userId={}", client.getClientId(), userId);
+        log.info("DB에 토큰 저장 완료: clientId={}, userId=[{}]", client.getClientId(), userId);
         
         // 사용자 일련번호 생성 (실제로는 사용자 정보에서 가져와야 함)
+        log.info("사용자 일련번호 생성 시작 - 입력 userId: [{}]", userId);
         String userSeqNo = generateUserSeqNo(userId);
+        log.info("사용자 일련번호 생성 완료: {}", userSeqNo);
         
-        return TokenResponse.builder()
+        TokenResponse response = TokenResponse.builder()
                 .accessToken(accessToken)
                 .tokenType("Bearer")
                 .expiresIn(accessTokenValidityInSeconds)
@@ -336,31 +343,67 @@ public class OAuthService {
                 .scope(scope)
                 .userSeqNo(userSeqNo)
                 .build();
+        
+        log.info("=== 최종 토큰 응답 ===");
+        log.info("userSeqNo: {}", response.getUserSeqNo());
+        log.info("scope: {}", response.getScope());
+        
+        return response;
     }
     
     private String generateUserSeqNo(String userId) {
-        // 사용자 ID로 실제 사용자 조회 또는 생성
+        log.info("=== generateUserSeqNo 시작 ===");
+        log.info("입력 userId: [{}]", userId);
+        
+        // userId가 null이나 빈 문자열인 경우 기본값 반환
+        if (userId == null || userId.trim().isEmpty()) {
+            log.warn("userId가 null이거나 빈 문자열입니다. 기본값 반환");
+            return "1000000106";
+        }
+        
         try {
-            // 먼저 userId를 userSeqNo로 가정하고 조회
-            if (userId != null && userId.matches("\\d{10}")) {
-                // 10자리 숫자면 userSeqNo로 판단
-                Optional<com.kftc.user.entity.User> userOpt = userService.findActiveUserByUserSeqNo(userId);
-                if (userOpt.isPresent()) {
-                    return userOpt.get().getUserSeqNo();
+            // userId가 숫자 형태인 경우 (10자리든 아니든) userSeqNo로 간주하고 그대로 반환
+            if (userId.matches("\\d+")) {
+                log.info("숫자 형태 userId 감지: {} -> userSeqNo로 간주하고 그대로 반환", userId);
+                
+                // DB에서 해당 사용자가 존재하는지 확인 (선택사항)
+                try {
+                    Optional<com.kftc.user.entity.User> userOpt = userService.findActiveUserByUserSeqNo(userId);
+                    if (userOpt.isPresent()) {
+                        log.info("DB에서 사용자 확인됨: userSeqNo={}", userOpt.get().getUserSeqNo());
+                        return userOpt.get().getUserSeqNo();
+                    } else {
+                        log.info("DB에서 사용자를 찾을 수 없지만 숫자 형태이므로 입력값 그대로 반환: {}", userId);
+                        return userId; // DB에 없어도 숫자 형태면 그대로 반환
+                    }
+                } catch (Exception dbEx) {
+                    log.warn("DB 조회 중 예외 발생하지만 숫자 형태이므로 입력값 그대로 반환: userId={}, error={}", userId, dbEx.getMessage());
+                    return userId; // DB 조회 실패해도 숫자 형태면 그대로 반환
                 }
             }
             
-            // 그렇지 않으면 CI로 사용자 찾기 시도
-            if (userId != null && userId.startsWith("temp_ci_")) {
+            // CI 형태인 경우 사용자 생성/조회
+            if (userId.startsWith("temp_ci_")) {
+                log.info("temp_ci_ 형식 userId 감지: {}", userId);
                 String userSeqNo = userService.createOrGetUserByCi(userId);
+                log.info("CI로 사용자 생성/조회 완료: userSeqNo={}", userSeqNo);
                 return userSeqNo;
             }
             
-            // 기본값 반환
+            // 그 외의 경우 기본값 반환
+            log.warn("예상하지 못한 userId 형태, 기본값 반환: userId=[{}]", userId);
             return "1000000106";
+            
         } catch (Exception e) {
-            log.warn("사용자 조회/생성 실패, 임시 사용자 일련번호 반환: userId={}", userId);
-            // 실패 시 기본값 반환
+            log.error("사용자 조회/생성 중 예외 발생: userId={}, error={}", userId, e.getMessage(), e);
+            
+            // 예외 발생 시에도 숫자 형태면 그대로 반환
+            if (userId.matches("\\d+")) {
+                log.info("예외 발생했지만 숫자 형태이므로 입력값 그대로 반환: {}", userId);
+                return userId;
+            }
+            
+            // 그 외의 경우 기본값 반환
             return "1000000106";
         }
     }
@@ -490,13 +533,16 @@ public class OAuthService {
      */
     @Transactional
     public String generateAuthorizationCode(String clientId, String userSeqNo, String scope, String redirectUri) {
-        log.info("Authorization Code 생성: clientId={}, userSeqNo={}", clientId, userSeqNo);
+        log.info("=== Authorization Code 생성 시작 ===");
+        log.info("clientId: {}, userSeqNo: {}, scope: {}, redirectUri: {}", clientId, userSeqNo, scope, redirectUri);
         
         // 클라이언트 검증
         OAuthClient client = getClientById(clientId);
+        log.info("클라이언트 검증 완료: {}", client.getClientName());
         
         // 기존 코드 삭제 (있다면)
         codeRepository.deleteByClientIdAndUserId(clientId, userSeqNo);
+        log.info("기존 Authorization Code 삭제 완료");
         
         // 새 인증 코드 생성
         String code = generateSecureCode();
@@ -505,7 +551,7 @@ public class OAuthService {
         AuthorizationCode authCode = AuthorizationCode.builder()
                 .code(code)
                 .clientId(clientId)
-                .userId(userSeqNo)
+                .userId(userSeqNo)  // 여기서 userSeqNo를 userId로 저장
                 .redirectUri(redirectUri)
                 .scope(scope)
                 .expiresAt(expiresAt)
@@ -513,7 +559,7 @@ public class OAuthService {
         
         codeRepository.save(authCode);
         
-        log.info("Authorization Code 발급 완료: code={}, userSeqNo={}", code, userSeqNo);
+        log.info("Authorization Code 발급 완료: code={}, DB에 저장된 userId={}", code, userSeqNo);
         
         return code;
     }

@@ -27,8 +27,7 @@ public class CardUserController {
         description = "(신용/체크)카드 정보 조회를 위해 오픈뱅킹센터에 등록했던 사용자등록(제3자정보제공동의)을 해지합니다."
     )
     public ResponseEntity<CardCancelResponse> cancelCardInquiry(
-            @Parameter(description = "Authorization 헤더 - Bearer <access_token>", required = true)
-            @RequestHeader("Authorization") String authorization,
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization,
             @Valid @RequestBody CardCancelRequest request) {
         
         log.info("카드조회해지 API 호출 - bankTranId: {}, userSeqNo: {}", 
@@ -45,8 +44,7 @@ public class CardUserController {
         description = "오픈뱅킹센터에 등록된 사용자의 (신용/체크)카드 발급 목록을 카드사별로 조회합니다."
     )
     public ResponseEntity<CardListResponse> getCardList(
-            @Parameter(description = "Authorization 헤더 - Bearer <access_token>", required = true)
-            @RequestHeader("Authorization") String authorization,
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization,
             @Parameter(description = "거래고유번호(참가기관)", required = true)
             @RequestParam("bank_tran_id") String bankTranId,
             @Parameter(description = "사용자일련번호", required = true)
@@ -78,8 +76,7 @@ public class CardUserController {
         description = "(신용/체크)카드 구분, 결제계좌 등의 카드 기본정보를 조회합니다."
     )
     public ResponseEntity<CardIssueInfoResponse> getCardIssueInfo(
-            @Parameter(description = "Authorization 헤더 - Bearer <access_token>", required = true)
-            @RequestHeader("Authorization") String authorization,
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization,
             @Parameter(description = "거래고유번호(참가기관)", required = true)
             @RequestParam("bank_tran_id") String bankTranId,
             @Parameter(description = "사용자일련번호", required = true)
@@ -111,8 +108,7 @@ public class CardUserController {
         description = "오픈뱅킹센터에 등록된 사용자의 월별 대금 청구 목록을 카드사별로 조회합니다."
     )
     public ResponseEntity<CardBillsResponse> getCardBills(
-            @Parameter(description = "Authorization 헤더 - Bearer <access_token>", required = true)
-            @RequestHeader("Authorization") String authorization,
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization,
             @Parameter(description = "거래고유번호(참가기관)", required = true)
             @RequestParam("bank_tran_id") String bankTranId,
             @Parameter(description = "사용자일련번호", required = true)
@@ -151,8 +147,7 @@ public class CardUserController {
         description = "오픈뱅킹센터에 등록된 사용자의 카드 청구 세부항목을 조회합니다."
     )
     public ResponseEntity<CardBillDetailResponse> getCardBillDetail(
-            @Parameter(description = "Authorization 헤더 - Bearer <access_token>", required = true)
-            @RequestHeader("Authorization") String authorization,
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization,
             @Parameter(description = "거래고유번호(참가기관)", required = true)
             @RequestParam("bank_tran_id") String bankTranId,
             @Parameter(description = "사용자일련번호", required = true)
@@ -191,8 +186,7 @@ public class CardUserController {
         description = "오픈뱅킹센터에 등록된 사용자의 카드 거래내역을 조회합니다."
     )
     public ResponseEntity<CardTransactionResponse> getCardTransactions(
-            @Parameter(description = "Authorization 헤더 - Bearer <access_token>", required = true)
-            @RequestHeader("Authorization") String authorization,
+            @Parameter(hidden = true) @RequestHeader("Authorization") String authorization,
             @Parameter(description = "거래고유번호(참가기관)", required = true)
             @RequestParam("bank_tran_id") String bankTranId,
             @Parameter(description = "사용자일련번호", required = true)
