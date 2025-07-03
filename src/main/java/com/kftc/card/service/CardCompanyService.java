@@ -22,7 +22,7 @@ public class CardCompanyService {
     private final RestTemplate restTemplate;
     private final UserService userService;
     
-    @Value("${card.company.kb.url:http://localhost:8083}")
+    @Value("${card.company.kb.url}")
     private String kbCardServerUrl;
     
     /**
@@ -75,8 +75,6 @@ public class CardCompanyService {
         return switch (bankCodeStd) {
             case "381" -> kbCardServerUrl; // KB카드
             // 다른 카드사들도 추가 가능
-            case "092" -> "http://localhost:8082"; // 예: 삼성카드
-            case "093" -> "http://localhost:8083"; // 예: 현대카드
             default -> {
                 log.error("지원하지 않는 카드사 코드: {}", bankCodeStd);
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);

@@ -207,7 +207,7 @@ public class OAuthController {
                 // 이미 처리된 요청일 가능성이 높으므로 사용자에게 안내
                 String message = "이미 처리된 요청입니다. 새로운 인증을 시작해주세요.";
                 String redirectUrl = "/oauth/pass?response_type=code&client_id=kftc-openbanking-client&redirect_uri=" + 
-                    URLEncoder.encode("http://localhost:8080/oauth/callback", StandardCharsets.UTF_8) + 
+                    URLEncoder.encode("http://34.47.102.221:8080/oauth/callback", StandardCharsets.UTF_8) +
                     "&scope=login|inquiry&state=" + URLEncoder.encode("new_" + System.currentTimeMillis(), StandardCharsets.UTF_8);
                 
                 return ResponseEntity.status(302)
@@ -1247,7 +1247,7 @@ public class OAuthController {
                                     code: authCode,
                                     client_id: 'kftc-openbanking-client',
                                     client_secret: 'kftc-openbanking-secret',
-                                    redirect_uri: 'http://localhost:8080/oauth/test/callback',
+                                    redirect_uri: 'http://34.47.102.221:8080/oauth/test/callback',
                                     grant_type: 'authorization_code'
                                 })
                             });

@@ -29,14 +29,13 @@ cd kftc
 ```
 
 3. API 문서 확인
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- H2 Console: http://localhost:8080/h2-console
+- Swagger UI: http://34.47.102.221:8080/swagger-ui.html
 
 ## 🔐 OAuth 2.0 플로우
 
 ### 1. 인증 코드 발급
 ```http
-GET /oauth2.0/authorize?response_type=code&client_id=kftc-openbanking-client&redirect_uri=http://localhost:8080/oauth2/callback&scope=read,write&user_id=test_user
+GET /oauth2.0/authorize?response_type=code&client_id=kftc-openbanking-client&redirect_uri=http://34.47.102.221:8080/oauth2/callback&scope=read,write&user_id=test_user
 ```
 
 ### 2. 액세스 토큰 발급
@@ -49,7 +48,7 @@ Content-Type: application/json
     "clientId": "kftc-openbanking-client",
     "clientSecret": "kftc-openbanking-secret",
     "code": "{authorization_code}",
-    "redirectUri": "http://localhost:8080/oauth2/callback"
+    "redirectUri": "http://34.47.102.221:8080/oauth2/callback"
 }
 ```
 
