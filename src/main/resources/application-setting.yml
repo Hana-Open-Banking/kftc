@@ -1,20 +1,3 @@
-swagger:
-  #  server-url: ${SERVER_URL}
-  server-url: http://localhost:8080
-
-# OAuth 및 토큰 설정
-oauth:
-  client:
-    client-id: kftc-openbanking-client
-    client-secret: kftc-openbanking-secret
-    redirect-uri: http://localhost:8080/oauth/2.0/callback
-    scope: login|inquiry|transfer
-    client-use-code: F001234560
-  token:
-    access-token-validity: 360000  # 1시간 (초)
-    refresh-token-validity: 86400  # 24시간 (초)
-    jwt-secret: kftc-openbanking-jwt-secret-key-for-token-generation-and-validation
-
 # 오픈뱅킹 API 설정
 openbanking:
   api:
@@ -24,36 +7,3 @@ openbanking:
     code: "097"  # 금융결제원 기관코드
     name: "금융결제원"
   server-url:
-
-# KFTC 설정 (서비스 클래스용)
-kftc:
-  base-url: https://testapi.openbanking.or.kr
-  client-id: kftc-openbanking-client
-  client-secret: kftc-openbanking-secret
-  redirect-uri: http://localhost:8080/oauth/2.0/callback
-  open-banking:
-    client-use-code: F001234560
-
-# 금융기관 서버 연동 설정
-financial:
-  institutions:
-    shinhan-bank:
-      code: "088"
-      name: "신한은행"
-      type: "BANK"
-      base-url: http://localhost:8082
-    kookmin-card:
-      code: "301"
-      name: "국민카드"  
-      type: "CARD"
-      base-url: http://localhost:8083
-    hyundai-capital:
-      code: "054"
-      name: "현대캐피탈"
-      type: "CAPITAL"
-      base-url: http://localhost:8085
-    samsung-fire:
-      code: "221"
-      name: "삼성화재"
-      type: "INSURANCE"
-      base-url: http://localhost:8084

@@ -15,14 +15,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -30,20 +30,23 @@ public class SecurityConfig {
             .headers(headers -> headers.frameOptions().disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // 정적 리소스 허용 (추가된 부분)
+                .requestMatchers("/favicon.ico", "/robots.txt").permitAll()
+
                 // OAuth 엔드포인트는 인증 불필요
                 .requestMatchers("/oauth/2.0/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-                
+
                 // 보호된 리소스 API는 인증 필요
                 .requestMatchers("/v2.0/**").authenticated()
-                
+
                 // 기타 모든 요청 허용
                 .anyRequest().permitAll()
             )
             // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
-} 
+}
