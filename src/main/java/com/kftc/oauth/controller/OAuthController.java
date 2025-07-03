@@ -886,19 +886,31 @@ public class OAuthController {
             </html>
             """.formatted(errorMessage);
     }
-    
+
     private String generateScopeListHtml(String scope) {
-        StringBuilder html = new StringBuilder();
-        String[] scopes = scope.split("\\|");
-        
-        for (String s : scopes) {
-            String description = getScopeDescription(s);
-            html.append("<div class='scope-item'>").append(description).append("</div>");
+        if (scope == null || scope.trim().isEmpty()) {
+            return "<div class='scope-item'>📋 기본 권한</div>";
         }
-        
+
+        StringBuilder html = new StringBuilder();
+
+        // 파이프(|)로 분리하여 각 scope를 개별 처리
+        String[] scopes = scope.split("\\|");
+
+        log.debug("Scope 분리 결과: 원본='{}', 분리된 개수={}", scope, scopes.length);
+
+        for (String s : scopes) {
+            String trimmedScope = s.trim(); // 공백 제거
+            if (!trimmedScope.isEmpty()) {
+                String description = getScopeDescription(trimmedScope);
+                html.append("<div class='scope-item'>").append(description).append("</div>");
+                log.debug("Scope 처리: '{}' -> '{}'", trimmedScope, description);
+            }
+        }
+
         return html.toString();
     }
-    
+
     private String getScopeDescription(String scope) {
         return switch (scope.toLowerCase()) {
             case "login" -> "🔐 로그인 정보 확인";
