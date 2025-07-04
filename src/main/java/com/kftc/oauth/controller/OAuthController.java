@@ -49,7 +49,7 @@ public class OAuthController {
      * 오픈뱅킹 인증 시작 (휴대폰 인증)
      */
     @Operation(summary = "오픈뱅킹 인증 시작", description = "휴대폰 인증으로 시작하는 오픈뱅킹 인증 화면을 제공합니다.")
-    @GetMapping("/pass")
+    @GetMapping("/2.0/authorize")
     public ResponseEntity<String> startOAuthFlow(
             @Parameter(description = "OAuth 2.0 인증 요청 시 반환되는 형태", required = true) 
             @RequestParam("response_type") String responseType,
@@ -229,7 +229,7 @@ public class OAuthController {
                 
                 // 이미 처리된 요청일 가능성이 높으므로 사용자에게 안내
                 String message = "이미 처리된 요청입니다. 새로운 인증을 시작해주세요.";
-                String redirectUrl = "/oauth/pass?response_type=code&client_id=kftc-openbanking-client&redirect_uri=" + 
+                String redirectUrl = "/oauth/2.0/authorize?response_type=code&client_id=kftc-openbanking-client&redirect_uri=" +
                     URLEncoder.encode("http://34.47.102.221:8080/oauth/callback", StandardCharsets.UTF_8) +
                     "&scope=login|inquiry&state=" + URLEncoder.encode("new_" + System.currentTimeMillis(), StandardCharsets.UTF_8);
                 
@@ -302,7 +302,7 @@ public class OAuthController {
      * 액세스 토큰 발급 처리
      */
     @Operation(summary = "액세스 토큰 발급", description = "Authorization Code를 사용하여 액세스 토큰을 발급합니다.")
-    @PostMapping(value = "/token", produces = "application/json")
+    @PostMapping(value = "/2.0/token", produces = "application/json")
     public ResponseEntity<TokenResponse> token(
             @Parameter(description = "사용자인증 성공 후 획득한 Authorization Code", required = true) 
             @RequestParam("code") String code,
@@ -1110,7 +1110,7 @@ public class OAuthController {
                     // scope 파이프 문자를 URL 인코딩
                     const scope = encodeURIComponent('login|inquiry');
                     
-                    const authUrl = '/oauth/pass?' + new URLSearchParams({
+                    const authUrl = '/oauth/2.0/authorize?' + new URLSearchParams({
                         response_type: 'code',
                         client_id: 'kftc-openbanking-client',
                         redirect_uri: '%s',
@@ -1223,7 +1223,7 @@ public class OAuthController {
                         result.innerHTML = '<div class="loading">⏳ Access Token을 발급받고 있습니다...</div>';
                         
                         try {
-                            const response = await fetch('/oauth/token', {
+                            const response = await fetch('/oauth/2.0/token', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                 body: new URLSearchParams({
@@ -1352,7 +1352,7 @@ public class OAuthController {
                         result.innerHTML = '<div class="loading">⏳ Access Token을 발급받고 있습니다...</div>';
                         
                         try {
-                            const response = await fetch('/oauth/token', {
+                            const response = await fetch('/oauth/2.0/token', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                 body: new URLSearchParams({

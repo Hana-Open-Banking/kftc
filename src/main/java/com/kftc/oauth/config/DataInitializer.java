@@ -106,7 +106,5 @@ public class DataInitializer implements CommandLineRunner {
         log.info("      http://34.47.102.221:8080/oauth/pass?response_type=code&client_id={}&redirect_uri={}&scope=login|inquiry&state=test123",
                  clientId, java.net.URLEncoder.encode(redirectUri, java.nio.charset.StandardCharsets.UTF_8));
         log.info("");
-
-
     }
 } 

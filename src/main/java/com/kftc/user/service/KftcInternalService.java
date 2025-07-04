@@ -64,7 +64,7 @@ public class KftcInternalService {
             formData.add("grant_type", "authorization_code");
             
             KftcTokenResponse response = webClient.post()
-                    .uri(kftcBaseUrl + "/oauth2.0/token")
+                    .uri(kftcBaseUrl + "/oauth/2.0/token")
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(BodyInserters.fromFormData(formData))
                     .retrieve()
