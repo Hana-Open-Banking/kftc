@@ -22,6 +22,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -175,12 +176,25 @@ public class OAuthController {
             session.setUserId(userId);
             session.setUserCi(tempUserCi);
             
-            // 바로 서비스 이용 동의 화면으로 이동
-            String consentHtml = generateConsentHtml(sessionId, session);
-            
-            return ResponseEntity.ok()
-                    .header("Content-Type", "text/html; charset=UTF-8")
-                    .body(consentHtml);
+            // 계좌 동의 화면으로 리디렉션 (URL 인코딩 추가)
+            try {
+                String redirectUrl = "/account-consent.html?userSeqNo=" + userId + 
+                                    "&userCi=" + java.net.URLEncoder.encode(tempUserCi, "UTF-8") + 
+                                    "&sessionId=" + sessionId;
+                
+                log.info("계좌 동의 화면으로 리디렉션: {}", redirectUrl);
+                
+                // JavaScript를 사용한 클라이언트 측 리디렉션
+                String redirectHtml = generateRedirectHtml(redirectUrl);
+                
+                return ResponseEntity.ok()
+                        .header("Content-Type", "text/html; charset=UTF-8")
+                        .body(redirectHtml);
+                        
+            } catch (java.io.UnsupportedEncodingException e) {
+                log.error("URL 인코딩 실패: {}", e.getMessage());
+                throw new RuntimeException("URL 인코딩 실패", e);
+            }
                     
         } catch (Exception e) {
             log.error("휴대폰 인증 실패: {}", e.getMessage());
@@ -916,6 +930,52 @@ public class OAuthController {
             </html>
             """.formatted(errorMessage);
     }
+    
+    private String generateRedirectHtml(String redirectUrl) {
+        return "<!DOCTYPE html>" +
+                "<html lang=\"ko\">" +
+                "<head>" +
+                "<meta charset=\"UTF-8\">" +
+                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" +
+                "<title>계좌 동의 화면으로 이동</title>" +
+                "<meta http-equiv=\"refresh\" content=\"2;url=" + redirectUrl + "\">" +
+                "<style>" +
+                "body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f5f5f5; }" +
+                ".redirect-container { max-width: 400px; margin: 0 auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }" +
+                ".spinner { border: 4px solid #f3f3f3; border-top: 4px solid #2196F3; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }" +
+                "@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }" +
+                ".manual-link { display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #2196F3; color: white; text-decoration: none; border-radius: 5px; }" +
+                ".manual-link:hover { background-color: #1976D2; }" +
+                "</style>" +
+                "</head>" +
+                "<body>" +
+                "<div class=\"redirect-container\">" +
+                "<h2>✅ 휴대폰 인증 완료</h2>" +
+                "<div class=\"spinner\"></div>" +
+                "<p>계좌 동의 화면으로 이동 중입니다...</p>" +
+                "<p style=\"color: #666; font-size: 14px; margin-top: 15px;\">2초 후 자동으로 이동됩니다.</p>" +
+                "<a href=\"" + redirectUrl + "\" class=\"manual-link\">수동으로 이동하기</a>" +
+                "</div>" +
+                "<script>" +
+                "console.log('리디렉션 URL: " + redirectUrl + "');" +
+                "// 다중 리디렉션 방법 사용" +
+                "setTimeout(function() {" +
+                "console.log('리디렉션 시작');" +
+                "try {" +
+                "window.location.href = '" + redirectUrl + "';" +
+                "} catch(e) {" +
+                "console.error('JavaScript 리디렉션 실패:', e);" +
+                "document.querySelector('.manual-link').click();" +
+                "}" +
+                "}, 2000);" +
+                "// 즉시 리디렉션 시도" +
+                "window.addEventListener('load', function() {" +
+                "setTimeout(function() { window.location.replace('" + redirectUrl + "'); }, 1000);" +
+                "});" +
+                "</script>" +
+                "</body>" +
+                "</html>";
+    }
 
     private String generateScopeListHtml(String scope) {
         if (scope == null || scope.trim().isEmpty()) {
@@ -1574,5 +1634,38 @@ public class OAuthController {
         }
         
         return sb.toString();
+    }
+
+    /**
+     * 사용자 선택 계좌 저장 API
+     */
+    @PostMapping("/save-selected-accounts")
+    @Operation(summary = "선택된 계좌 저장", description = "사용자가 동의한 계좌들만 DB에 저장합니다.")
+    public ResponseEntity<?> saveSelectedAccounts(
+            @RequestBody Map<String, Object> request) {
+        
+        try {
+            String userSeqNo = (String) request.get("userSeqNo");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> selectedAccounts = (List<Map<String, Object>>) request.get("selectedAccounts");
+            
+            if (userSeqNo == null || selectedAccounts == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "userSeqNo와 selectedAccounts는 필수입니다."
+                ));
+            }
+            
+            Map<String, Object> result = phoneVerificationService.saveSelectedAccounts(userSeqNo, selectedAccounts);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            log.error("선택된 계좌 저장 실패: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "계좌 저장 중 오류가 발생했습니다: " + e.getMessage()
+            ));
+        }
     }
 } 
