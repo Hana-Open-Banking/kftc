@@ -40,7 +40,7 @@ GET /oauth2.0/authorize?response_type=code&client_id=kftc-openbanking-client&red
 
 ### 2. 액세스 토큰 발급
 ```http
-POST /oauth2.0/token
+POST /oauth/2.0/token
 Content-Type: application/json
 
 {
@@ -54,7 +54,7 @@ Content-Type: application/json
 
 ### 3. 토큰 갱신
 ```http
-POST /oauth2.0/token
+POST /oauth/2.0/token
 Content-Type: application/json
 
 {
