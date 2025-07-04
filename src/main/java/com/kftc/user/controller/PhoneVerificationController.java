@@ -12,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/phone-verification")
@@ -63,6 +66,33 @@ public class PhoneVerificationController {
                 .status(200)
                 .message(message)
                 .data(result)
+                .build();
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(summary = "금융기관 연동 동의", 
+               description = "사용자가 선택한 금융기관들과 연동 동의를 완료합니다.")
+    @PostMapping("/financial-consent")
+    public ResponseEntity<BasicResponse> consentFinancialInstitutions(
+            @RequestBody Map<String, Object> request) {
+        
+        String userSeqNo = (String) request.get("userSeqNo");
+        @SuppressWarnings("unchecked")
+        List<String> selectedBankCodes = (List<String>) request.get("selectedBankCodes");
+        
+        log.info("금융기관 연동 동의 요청: userSeqNo={}, selectedBankCodes={}", userSeqNo, selectedBankCodes);
+        
+        List<String> linkedInstitutions = phoneVerificationService.linkSelectedFinancialInstitutions(
+            userSeqNo, selectedBankCodes);
+        
+        BasicResponse response = BasicResponse.builder()
+                .status(200)
+                .message("금융기관 연동 동의가 완료되었습니다.")
+                .data(Map.of(
+                    "linkedInstitutions", linkedInstitutions,
+                    "totalCount", linkedInstitutions.size()
+                ))
                 .build();
         
         return ResponseEntity.ok(response);

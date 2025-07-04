@@ -106,11 +106,11 @@ public class DataInitializer implements CommandLineRunner {
         log.info("      http://34.47.102.221:8080/oauth/test/client");
         log.info("");
         log.info("   2. 직접 OAuth 인증:");
-        log.info("      http://34.47.102.221:8080/oauth/pass?response_type=code&client_id={}&redirect_uri={}&scope=login|inquiry&state=test123",
+        log.info("      http://34.47.102.221:8080/oauth/2.0/authorize?response_type=code&client_id={}&redirect_uri={}&scope=login|inquiry&state=test123",
                  clientId, java.net.URLEncoder.encode(redirectUri, java.nio.charset.StandardCharsets.UTF_8));
         log.info("");
         log.info("   3. 토큰 발급 (cURL):");
-        log.info("      curl -X POST http://34.47.102.221:8080/oauth/token \\");
+        log.info("      curl -X POST http://34.47.102.221:8080/oauth/2.0/token \\");
         log.info("        -d \"grant_type=authorization_code\" \\");
         log.info("        -d \"code=[받은_코드]\" \\");
         log.info("        -d \"client_id={}\" \\", clientId);
@@ -126,7 +126,7 @@ public class DataInitializer implements CommandLineRunner {
         
         // 오픈뱅킹 API 테스트
         log.info("🏦 오픈뱅킹 API 테스트:");
-        log.info("   - 사용자 토큰발급: POST /oauth/token");
+        log.info("   - 사용자 토큰발급: POST /oauth/2.0/token");
         log.info("   - 토큰 검증: POST /oauth/introspect");
         log.info("   - 사용자 정보: GET /v2.0/user/me");
         log.info("   - 계좌 목록: GET /v2.0/account/list");

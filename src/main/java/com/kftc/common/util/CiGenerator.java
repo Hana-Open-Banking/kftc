@@ -56,6 +56,43 @@ public class CiGenerator {
     }
     
     /**
+     * 실제 주민등록번호를 기반으로 KISA 규격에 맞는 CI를 생성합니다.
+     * PASS 인증에서 받은 실제 주민등록번호를 사용
+     */
+    public String generateCiWithRealRn(String realRn) {
+        try {
+            // 1. 실제 주민등록번호 검증
+            if (realRn == null || realRn.replaceAll("[^0-9]", "").length() != 13) {
+                throw new IllegalArgumentException("올바르지 않은 주민등록번호입니다.");
+            }
+            
+            String cleanRn = realRn.replaceAll("[^0-9]", "");
+            log.debug("실제 주민등록번호 사용: {}", maskRn(cleanRn));
+            
+            // 2. RN + Padding (512bit로 맞추기)
+            byte[] rnWithPadding = createRnWithPadding(cleanRn);
+            
+            // 3. SA (비밀정보) 
+            byte[] sa = SECRET_KEY_SA.getBytes(StandardCharsets.UTF_8);
+            
+            // 4. (RN || Padding) ⊕ SA (XOR 연산)
+            byte[] xorResult = xorBytes(rnWithPadding, sa);
+            
+            // 5. HMAC-SHA512로 CI 생성
+            String ci = generateHmacSha512(xorResult, SECRET_KEY_SK);
+            
+            log.info("실제 주민등록번호로 CI 생성 완료: rn={}, ci={}", 
+                    maskRn(cleanRn), maskCi(ci));
+            
+            return ci;
+            
+        } catch (Exception e) {
+            log.error("실제 주민등록번호로 CI 생성 중 오류 발생: rn={}", maskRn(realRn), e);
+            throw new RuntimeException("CI 생성 실패: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
      * 휴대폰 번호를 기반으로 목업 주민등록번호 생성
      * 실제 서비스에서는 실제 주민등록번호를 사용해야 함
      */

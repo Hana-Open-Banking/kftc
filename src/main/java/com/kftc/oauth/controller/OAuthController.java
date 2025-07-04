@@ -48,7 +48,7 @@ public class OAuthController {
      * 오픈뱅킹 인증 시작 (휴대폰 인증)
      */
     @Operation(summary = "오픈뱅킹 인증 시작", description = "휴대폰 인증으로 시작하는 오픈뱅킹 인증 화면을 제공합니다.")
-    @GetMapping("/pass")
+    @GetMapping("/2.0/authorize")
     public ResponseEntity<String> startOAuthFlow(
             @Parameter(description = "OAuth 2.0 인증 요청 시 반환되는 형태", required = true) 
             @RequestParam("response_type") String responseType,
@@ -104,10 +104,13 @@ public class OAuthController {
             @RequestParam("user_name") String userName,
             
             @Parameter(description = "사용자 이메일", required = true)
-            @RequestParam("user_email") String userEmail) {
+            @RequestParam("user_email") String userEmail,
+            
+            @Parameter(description = "주민등록번호", required = true)
+            @RequestParam("social_security_number") String socialSecurityNumber) {
         
-        log.info("휴대폰 인증 코드 발송: sessionId={}, phoneNumber={}, userName={}, userEmail={}", 
-                sessionId, phoneNumber, userName, userEmail);
+        log.info("휴대폰 인증 코드 발송: sessionId={}, phoneNumber={}, userName={}, userEmail={}, socialSecurityNumber={}", 
+                sessionId, phoneNumber, userName, userEmail, socialSecurityNumber.substring(0, 6) + "******");
         
         // 세션 검증
         AuthSession session = authSessions.get(sessionId);
@@ -122,6 +125,7 @@ public class OAuthController {
         session.setPhoneNumber(phoneNumber);
         session.setUserName(userName);
         session.setUserEmail(userEmail);
+        session.setSocialSecurityNumber(socialSecurityNumber);
         
         BasicResponse response = BasicResponse.builder()
                 .status(200)
@@ -157,11 +161,16 @@ public class OAuthController {
         
         // 휴대폰 인증 코드 확인
         try {
-            Object result = phoneVerificationService.verifyCodeWithPassAuth(phoneNumber, verificationCode, null, null);
+            // 세션에서 사용자 정보를 가져와서 PASS 인증 처리 (실제 사용자 입력 주민등록번호 사용)
+            String userSocialSecurityNumber = session.getSocialSecurityNumber();
+            if (userSocialSecurityNumber == null || userSocialSecurityNumber.isEmpty()) {
+                throw new IllegalArgumentException("주민등록번호가 없습니다.");
+            }
+            Object result = phoneVerificationService.verifyCodeWithPassAuth(phoneNumber, verificationCode, session.getUserName(), userSocialSecurityNumber);
             session.setPhoneVerified(true);
             
             // KISA 규격에 맞는 CI 생성 및 사용자 정보 생성/조회
-            String tempUserCi = ciGenerator.generateCi(phoneNumber);
+            String tempUserCi = ciGenerator.generateCiWithRealRn(userSocialSecurityNumber);
             String userId = oAuthService.processUserAuth(tempUserCi, session.getUserName(), phoneNumber, session.getUserEmail());
             session.setUserId(userId);
             session.setUserCi(tempUserCi);
@@ -206,7 +215,7 @@ public class OAuthController {
                 
                 // 이미 처리된 요청일 가능성이 높으므로 사용자에게 안내
                 String message = "이미 처리된 요청입니다. 새로운 인증을 시작해주세요.";
-                String redirectUrl = "/oauth/pass?response_type=code&client_id=kftc-openbanking-client&redirect_uri=" + 
+                String redirectUrl = "/oauth/2.0/authorize?response_type=code&client_id=kftc-openbanking-client&redirect_uri=" +
                     URLEncoder.encode("http://34.47.102.221:8080/oauth/callback", StandardCharsets.UTF_8) +
                     "&scope=login|inquiry&state=" + URLEncoder.encode("new_" + System.currentTimeMillis(), StandardCharsets.UTF_8);
                 
@@ -279,7 +288,7 @@ public class OAuthController {
      * 액세스 토큰 발급 처리
      */
     @Operation(summary = "액세스 토큰 발급", description = "Authorization Code를 사용하여 액세스 토큰을 발급합니다.")
-    @PostMapping(value = "/token", produces = "application/json")
+    @PostMapping(value = "/2.0/token", produces = "application/json")
     public ResponseEntity<TokenResponse> token(
             @Parameter(description = "사용자인증 성공 후 획득한 Authorization Code", required = true) 
             @RequestParam("code") String code,
@@ -630,6 +639,11 @@ public class OAuthController {
                         </div>
                         
                         <div class="form-group">
+                            <label for="socialSecurityNumber">주민등록번호</label>
+                            <input type="text" id="socialSecurityNumber" placeholder="901010-1234567" maxlength="14" required>
+                        </div>
+                        
+                        <div class="form-group">
                             <label for="phoneNumber">휴대폰 번호</label>
                             <input type="tel" id="phoneNumber" placeholder="010-1234-5678" maxlength="13" required>
                         </div>
@@ -666,9 +680,20 @@ public class OAuthController {
                     e.target.value = formatPhoneNumber(e.target.value);
                 });
                 
+                function formatSocialSecurityNumber(value) {
+                    const numbers = value.replace(/[^\\d]/g, '');
+                    if (numbers.length <= 6) return numbers;
+                    return numbers.slice(0, 6) + '-' + numbers.slice(6, 13);
+                }
+                
+                document.getElementById('socialSecurityNumber').addEventListener('input', function(e) {
+                    e.target.value = formatSocialSecurityNumber(e.target.value);
+                });
+                
                 async function sendVerificationCode() {
                     const userName = document.getElementById('userName').value.trim();
                     const userEmail = document.getElementById('userEmail').value.trim();
+                    const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.replace(/[^\\d]/g, '');
                     phoneNumber = document.getElementById('phoneNumber').value.replace(/[^\\d]/g, '');
                     
                     if (!userName) {
@@ -681,17 +706,22 @@ public class OAuthController {
                         return;
                     }
                     
+                    if (socialSecurityNumber.length !== 13) {
+                        alert('올바른 주민등록번호를 입력해주세요. (13자리)');
+                        return;
+                    }
+                    
                     if (phoneNumber.length !== 11) {
                         alert('올바른 휴대폰 번호를 입력해주세요.');
                         return;
                     }
                     
-                    try {
-                        const response = await fetch('/oauth/phone/send', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `session_id=${sessionId}&phone_number=${phoneNumber}&user_name=${encodeURIComponent(userName)}&user_email=${encodeURIComponent(userEmail)}`
-                        });
+                                            try {
+                            const response = await fetch('/oauth/phone/send', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: `session_id=${sessionId}&phone_number=${phoneNumber}&user_name=${encodeURIComponent(userName)}&user_email=${encodeURIComponent(userEmail)}&social_security_number=${socialSecurityNumber}`
+                            });
                         
                         const result = await response.json();
                         if (response.ok) {
@@ -931,6 +961,7 @@ public class OAuthController {
         private String userName;
         private String userEmail;
         private String phoneNumber;
+        private String socialSecurityNumber;
         private boolean phoneVerified = false;
         
         public AuthSession(String clientId, String redirectUri, String scope, String state) {
@@ -955,6 +986,8 @@ public class OAuthController {
         public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
         public String getPhoneNumber() { return phoneNumber; }
         public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+        public String getSocialSecurityNumber() { return socialSecurityNumber; }
+        public void setSocialSecurityNumber(String socialSecurityNumber) { this.socialSecurityNumber = socialSecurityNumber; }
         public boolean isPhoneVerified() { return phoneVerified; }
         public void setPhoneVerified(boolean phoneVerified) { this.phoneVerified = phoneVerified; }
     }
@@ -1017,7 +1050,7 @@ public class OAuthController {
                     // scope 파이프 문자를 URL 인코딩
                     const scope = encodeURIComponent('login|inquiry');
                     
-                    const authUrl = '/oauth/pass?' + new URLSearchParams({
+                    const authUrl = '/oauth/2.0/authorize?' + new URLSearchParams({
                         response_type: 'code',
                         client_id: 'kftc-openbanking-client',
                         redirect_uri: '%s',
@@ -1130,7 +1163,7 @@ public class OAuthController {
                         result.innerHTML = '<div class="loading">⏳ Access Token을 발급받고 있습니다...</div>';
                         
                         try {
-                            const response = await fetch('/oauth/token', {
+                            const response = await fetch('/oauth/2.0/token', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                 body: new URLSearchParams({
@@ -1259,7 +1292,7 @@ public class OAuthController {
                         result.innerHTML = '<div class="loading">⏳ Access Token을 발급받고 있습니다...</div>';
                         
                         try {
-                            const response = await fetch('/oauth/token', {
+                            const response = await fetch('/oauth/2.0/token', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                 body: new URLSearchParams({
