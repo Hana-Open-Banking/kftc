@@ -18,12 +18,6 @@ import java.util.UUID;
 public class CardUserService {
     
     private final CardCompanyService cardCompanyService;
-    
-    private static final String SUCCESS_CODE = "A0000";
-    private static final String SUCCESS_MESSAGE = "";
-    private static final String BANK_SUCCESS_CODE = "000";
-    private static final String BANK_SUCCESS_MESSAGE = "";
-    private static final String BANK_NAME = "오픈카드";
 
     /**
      * Authorization 헤더 검증

@@ -26,49 +26,6 @@ public class CardCompanyService {
     private String kbCardServerUrl;
     
     /**
-     * 카드사 서버로 카드사용자 등록 요청
-     */
-    public CardUserRegisterResponse registerUserToCardCompany(CardUserRegisterRequest request, String authorization) {
-        log.info("카드사 연동 요청 시작 - bankCodeStd: {}, userCi: {}", request.getBankCodeStd(), request.getUserCi());
-        
-        try {
-            // 카드사별 서버 URL 결정
-            String cardCompanyUrl = getCardCompanyUrl(request.getBankCodeStd());
-            String apiUrl = cardCompanyUrl + "/v2.0/user/register_card";
-            
-            // HTTP 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", authorization);
-            
-            // HTTP 요청 생성
-            HttpEntity<CardUserRegisterRequest> requestEntity = new HttpEntity<>(request, headers);
-            
-            // 카드사 서버 호출
-            ResponseEntity<CardUserRegisterResponse> response = restTemplate.exchange(
-                    apiUrl, 
-                    HttpMethod.POST, 
-                    requestEntity, 
-                    CardUserRegisterResponse.class
-            );
-            
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                CardUserRegisterResponse cardCompanyResponse = response.getBody();
-                log.info("카드사 연동 응답 성공 - userSeqNo: {}, rspCode: {}", 
-                        cardCompanyResponse.getUserSeqNo(), cardCompanyResponse.getRspCode());
-                return cardCompanyResponse;
-            } else {
-                log.error("카드사 연동 실패 - HTTP Status: {}", response.getStatusCode());
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
-            }
-            
-        } catch (Exception e) {
-            log.error("카드사 연동 중 오류 발생 - bankCodeStd: {}, error: {}", request.getBankCodeStd(), e.getMessage(), e);
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
-        }
-    }
-    
-    /**
      * 카드사 코드에 따른 서버 URL 반환
      */
     private String getCardCompanyUrl(String bankCodeStd) {
@@ -91,81 +48,7 @@ public class CardCompanyService {
         log.debug("카드 유효성 확인 - bankCodeStd: {}, userCi: {}", bankCodeStd, userCi);
         return true;
     }
-    
-    /**
-     * 카드사 서버로 카드정보변경 요청
-     */
-    public CardInfoUpdateResponse updateCardInfo(CardInfoUpdateRequest request, String authorization) {
-        log.info("카드정보변경 카드사 연동 - bankCodeStd: {}, userSeqNo: {}", request.getBankCodeStd(), request.getUserSeqNo());
-        
-        try {
-            String cardCompanyUrl = getCardCompanyUrl(request.getBankCodeStd());
-            String apiUrl = cardCompanyUrl + "/v2.0/cards/update";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", authorization);
-            
-            HttpEntity<CardInfoUpdateRequest> requestEntity = new HttpEntity<>(request, headers);
-            
-            ResponseEntity<CardInfoUpdateResponse> response = restTemplate.exchange(
-                    apiUrl, 
-                    HttpMethod.POST, 
-                    requestEntity, 
-                    CardInfoUpdateResponse.class
-            );
-            
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("카드정보변경 카드사 연동 성공 - userSeqNo: {}", request.getUserSeqNo());
-                return response.getBody();
-            } else {
-                log.error("카드정보변경 카드사 연동 실패 - HTTP Status: {}", response.getStatusCode());
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
-            }
-            
-        } catch (Exception e) {
-            log.error("카드정보변경 카드사 연동 중 오류 - bankCodeStd: {}, error: {}", request.getBankCodeStd(), e.getMessage(), e);
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
-        }
-    }
-    
-    /**
-     * 카드사 서버로 카드정보조회 요청
-     */
-    public CardInfoInquiryResponse inquireCardInfo(CardInfoInquiryRequest request, String authorization) {
-        log.info("카드정보조회 카드사 연동 - bankCodeStd: {}, userSeqNo: {}", request.getBankCodeStd(), request.getUserSeqNo());
-        
-        try {
-            String cardCompanyUrl = getCardCompanyUrl(request.getBankCodeStd());
-            String apiUrl = cardCompanyUrl + "/v2.0/cards/info";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", authorization);
-            
-            HttpEntity<CardInfoInquiryRequest> requestEntity = new HttpEntity<>(request, headers);
-            
-            ResponseEntity<CardInfoInquiryResponse> response = restTemplate.exchange(
-                    apiUrl, 
-                    HttpMethod.POST, 
-                    requestEntity, 
-                    CardInfoInquiryResponse.class
-            );
-            
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("카드정보조회 카드사 연동 성공 - userSeqNo: {}", request.getUserSeqNo());
-                return response.getBody();
-            } else {
-                log.error("카드정보조회 카드사 연동 실패 - HTTP Status: {}", response.getStatusCode());
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
-            }
-            
-        } catch (Exception e) {
-            log.error("카드정보조회 카드사 연동 중 오류 - bankCodeStd: {}, error: {}", request.getBankCodeStd(), e.getMessage(), e);
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
-        }
-    }
-    
+
     /**
      * 카드사 서버로 카드목록조회 요청
      */
