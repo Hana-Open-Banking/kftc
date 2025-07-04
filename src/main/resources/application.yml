@@ -10,12 +10,17 @@ spring:
     active: datasource, setting, local
   main:
     lazy-initialization: false
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
+    root: INFO
     com.kftc: DEBUG
+    com.kftc.user.service.PhoneVerificationService: DEBUG
 
 # 은행 API 설정
 bank:

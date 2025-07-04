@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class AccountMapping extends DateTimeEntity {
     
     @Id
-    @Column(name = "fintech_use_num", length = 24)
+    @Column(name = "fintech_use_num", length = 30)
     private String fintechUseNum; // 핀테크이용번호
     
     @Column(name = "user_seq_no", length = 10, nullable = false)
@@ -50,11 +50,27 @@ public class AccountMapping extends DateTimeEntity {
     @Column(name = "reg_state", length = 20)
     private String regState; // 등록상태
     
+    @Column(name = "payer_num", length = 30)
+    private String payerNum; // 출금계좌번호
+    
+    @Column(name = "bank_name", length = 50)
+    private String bankName; // 금융기관명
+    
+    @Column(name = "savings_bank_name", length = 50)
+    private String savingsBankName; // 저축은행명
+    
+    @Column(name = "inquiry_agree_dtime", length = 14)
+    private String inquiryAgreeDtime; // 조회동의일시
+    
+    @Column(name = "transfer_agree_dtime", length = 14)
+    private String transferAgreeDtime; // 이체동의일시
+    
     @Builder
     public AccountMapping(String fintechUseNum, String userSeqNo, String orgCode, String bankCodeStd,
                          String accountNumMasked, String accountAlias, String accountSeq,
                          String accountHolderName, String accountType, String inquiryAgreeYn,
-                         String transferAgreeYn, String regState) {
+                         String transferAgreeYn, String regState, String payerNum, String bankName,
+                         String savingsBankName, String inquiryAgreeDtime, String transferAgreeDtime) {
         this.fintechUseNum = fintechUseNum;
         this.userSeqNo = userSeqNo;
         this.orgCode = orgCode;
@@ -67,6 +83,11 @@ public class AccountMapping extends DateTimeEntity {
         this.inquiryAgreeYn = inquiryAgreeYn;
         this.transferAgreeYn = transferAgreeYn;
         this.regState = regState;
+        this.payerNum = payerNum;
+        this.bankName = bankName;
+        this.savingsBankName = savingsBankName;
+        this.inquiryAgreeDtime = inquiryAgreeDtime;
+        this.transferAgreeDtime = transferAgreeDtime;
     }
     
     public void updateAccountInfo(String accountAlias, String inquiryAgreeYn, String transferAgreeYn) {
