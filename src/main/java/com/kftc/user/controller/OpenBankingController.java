@@ -1,5 +1,6 @@
 package com.kftc.user.controller;
 
+import com.kftc.user.dto.UserMeResponse;
 import com.kftc.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,28 @@ import java.net.URI;
 public class OpenBankingController {
     
     private final UserService userService;
+    
+    /**
+     * 사용자정보조회 API
+     * https://openapi.openbanking.or.kr/v2.0/user/me
+     */
+    @Operation(summary = "사용자정보조회", description = "사용자의 계좌정보 및 동의정보를 조회합니다.")
+    @GetMapping("/user/me")
+    public ResponseEntity<UserMeResponse> getUserMe(
+            @RequestParam("user_seq_no") String userSeqNo,
+            @RequestHeader("Authorization") String authorization) {
+        
+        log.info("사용자정보조회 요청: userSeqNo={}", userSeqNo);
+        
+        try {
+            UserMeResponse response = userService.getUserMeInfo(userSeqNo);
+            log.info("사용자정보조회 성공: userSeqNo={}", userSeqNo);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("사용자정보조회 실패: userSeqNo={}, error={}", userSeqNo, e.getMessage());
+            throw e;
+        }
+    }
     
     /**
      * 원카에서 CI를 받아 사용자 등록 및 동의 페이지로 리다이렉트

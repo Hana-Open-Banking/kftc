@@ -3,10 +3,17 @@ package com.kftc.user.service;
 import com.kftc.common.exception.BusinessException;
 import com.kftc.common.exception.EntityNotFoundException;
 import com.kftc.common.exception.ErrorCode;
+import java.util.UUID;
 import com.kftc.user.dto.KftcTokenResponse;
-
+import com.kftc.user.dto.UserMeResponse;
 import com.kftc.user.dto.UserRegisterResponse;
+import com.kftc.user.entity.AccountMapping;
 import com.kftc.user.entity.User;
+import com.kftc.user.entity.UserConsentFinancialInstitution;
+import com.kftc.user.entity.FinancialInstitution;
+import com.kftc.user.repository.AccountMappingRepository;
+import com.kftc.user.repository.UserConsentFinancialInstitutionRepository;
+import com.kftc.user.repository.FinancialInstitutionRepository;
 import com.kftc.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +21,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,6 +36,9 @@ public class UserService {
     
     private final UserRepository userRepository;
     private final KftcInternalService kftcInternalService;
+    private final AccountMappingRepository accountMappingRepository;
+    private final UserConsentFinancialInstitutionRepository userConsentFinancialInstitutionRepository;
+    private final FinancialInstitutionRepository financialInstitutionRepository;
     
     /**
      * CI로 사용자 생성 또는 조회 (오픈뱅킹 플로우용)  
@@ -237,5 +252,119 @@ public class UserService {
                     "해당 사용자 일련번호의 사용자를 찾을 수 없습니다: " + userSeqNo));
         
         return user.getUserCi();
+    }
+
+    /**
+     * 사용자정보조회 API (user/me)
+     */
+    @Transactional(readOnly = true)
+    public UserMeResponse getUserMeInfo(String userSeqNo) {
+        log.info("사용자정보조회 시작: userSeqNo={}", userSeqNo);
+        
+        // 사용자 조회
+        User user = userRepository.findByUserSeqNo(userSeqNo)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND, 
+                    "해당 사용자 일련번호의 사용자를 찾을 수 없습니다: " + userSeqNo));
+        
+        // 계좌 정보 조회
+        List<AccountMapping> accountMappings = accountMappingRepository.findByUserSeqNo(userSeqNo);
+        
+        // 동의 정보 조회
+        List<UserConsentFinancialInstitution> consentList = userConsentFinancialInstitutionRepository.findByUserSeqNo(userSeqNo);
+        
+        // 응답 생성
+        String apiTranId = UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        String apiTranDtm = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        
+        // 계좌 정보 변환
+        List<UserMeResponse.AccountInfo> accountInfoList = accountMappings.stream()
+                .map(this::convertToAccountInfo)
+                .collect(Collectors.toList());
+        
+        // 동의 정보별 분류
+        List<UserMeResponse.CardInfo> cardInfoList = new ArrayList<>();
+        List<UserMeResponse.PayInfo> payInfoList = new ArrayList<>();
+        List<UserMeResponse.InsuranceInfo> insuranceInfoList = new ArrayList<>();
+        List<UserMeResponse.LoanInfo> loanInfoList = new ArrayList<>();
+        
+        for (UserConsentFinancialInstitution consent : consentList) {
+            Optional<FinancialInstitution> fiOpt = financialInstitutionRepository.findByBankCodeStd(consent.getBankCodeStd());
+            if (fiOpt.isPresent()) {
+                FinancialInstitution fi = fiOpt.get();
+                
+                if ("CARD".equals(fi.getBankType())) {
+                    cardInfoList.add(UserMeResponse.CardInfo.builder()
+                            .bankCodeStd(consent.getBankCodeStd())
+                            .memberBankCode(consent.getBankCodeStd())
+                            .inquiryAgreeDtime(consent.getInfoPrvdAgmtDtime())
+                            .build());
+                } else if ("PAY".equals(fi.getBankType())) {
+                    payInfoList.add(UserMeResponse.PayInfo.builder()
+                            .bankCodeStd(consent.getBankCodeStd())
+                            .inquiryAgreeDtime(consent.getInfoPrvdAgmtDtime())
+                            .build());
+                } else if ("INSURANCE".equals(fi.getBankType())) {
+                    insuranceInfoList.add(UserMeResponse.InsuranceInfo.builder()
+                            .bankCodeStd(consent.getBankCodeStd())
+                            .inquiryAgreeDtime(consent.getInfoPrvdAgmtDtime())
+                            .build());
+                } else if ("LOAN".equals(fi.getBankType())) {
+                    loanInfoList.add(UserMeResponse.LoanInfo.builder()
+                            .bankCodeStd(consent.getBankCodeStd())
+                            .inquiryAgreeDtime(consent.getInfoPrvdAgmtDtime())
+                            .build());
+                }
+            }
+        }
+        
+        UserMeResponse response = UserMeResponse.builder()
+                .apiTranId(apiTranId)
+                .apiTranDtm(apiTranDtm)
+                .rspCode("A0000")
+                .rspMessage("")
+                .userSeqNo(user.getUserSeqNo())
+                .userCi(user.getUserCi())
+                .userName(user.getUserName())
+                .resCnt(String.valueOf(accountInfoList.size()))
+                .resList(accountInfoList)
+                .inquiryCardCnt(String.valueOf(cardInfoList.size()))
+                .inquiryCardList(cardInfoList)
+                .inquiryPayCnt(String.valueOf(payInfoList.size()))
+                .inquiryPayList(payInfoList)
+                .inquiryInsuranceCnt(String.valueOf(insuranceInfoList.size()))
+                .inquiryInsuranceList(insuranceInfoList)
+                .inquiryLoanCnt(String.valueOf(loanInfoList.size()))
+                .inquiryLoanList(loanInfoList)
+                .build();
+        
+        log.info("사용자정보조회 완료: userSeqNo={}, 계좌수={}, 카드={}, 결제={}, 보험={}, 대출={}",
+                userSeqNo, accountInfoList.size(), cardInfoList.size(), payInfoList.size(), 
+                insuranceInfoList.size(), loanInfoList.size());
+        
+        return response;
+    }
+    
+    /**
+     * AccountMapping을 AccountInfo로 변환
+     */
+    private UserMeResponse.AccountInfo convertToAccountInfo(AccountMapping account) {
+        return UserMeResponse.AccountInfo.builder()
+                .fintechUseNum(account.getFintechUseNum())
+                .accountAlias(account.getAccountAlias())
+                .bankCodeStd(account.getBankCodeStd())
+                .bankCodeSub(account.getBankCodeStd() + "001") // 임시 값
+                .bankName(account.getBankName())
+                .savingsBankName(account.getSavingsBankName())
+                .accountNumMasked(account.getAccountNumMasked())
+                .accountSeq(account.getAccountSeq())
+                .accountHolderName(account.getAccountHolderName())
+                .accountHolderType("P") // 개인
+                .accountType(account.getAccountType())
+                .inquiryAgreeYn(account.getInquiryAgreeYn())
+                .inquiryAgreeDtime(account.getInquiryAgreeDtime())
+                .transferAgreeYn(account.getTransferAgreeYn())
+                .transferAgreeDtime(account.getTransferAgreeDtime())
+                .payerNum(account.getPayerNum())
+                .build();
     }
 } 

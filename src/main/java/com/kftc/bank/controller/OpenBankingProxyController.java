@@ -1,7 +1,9 @@
 package com.kftc.bank.controller;
 
-import com.kftc.bank.common.*;
 import com.kftc.bank.service.BankService;
+import com.kftc.bank.common.BankAccountInfo;
+import com.kftc.bank.common.BankCode;
+import com.kftc.bank.common.TransferRequest;
 import com.kftc.common.dto.BasicResponse;
 import com.kftc.oauth.config.JwtAuthenticationFilter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,11 +20,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "오픈뱅킹 프록시", description = "오픈뱅킹 API 프록시 서비스")
 @RestController
-@RequestMapping("/api")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "오픈뱅킹 API", description = "오픈뱅킹 표준 API - 정보제공자(은행) 연동")
 public class OpenBankingProxyController {
     
     private final BankService bankService;
@@ -44,19 +45,27 @@ public class OpenBankingProxyController {
     public ResponseEntity<BasicResponse> getUserInfo(
             @Parameter(description = "사용자일련번호") @RequestParam(value = "user_seq_no", required = false) String userSeqNo) {
         
+        log.info("=== /v2.0/user/me API 호출 시작 ===");
+        log.info("요청된 user_seq_no: [{}]", userSeqNo);
+        
         try {
             // JWT 토큰에서 사용자 정보 추출
+            log.info("JWT 토큰에서 사용자 정보 추출 시도...");
             JwtAuthenticationFilter.JwtAuthenticatedUser authenticatedUser = getAuthenticatedUser();
+            log.info("JWT 인증 사용자 정보: {}", authenticatedUser);
             
             // user_seq_no가 없으면 JWT에서 추출
             if (userSeqNo == null || userSeqNo.trim().isEmpty()) {
                 userSeqNo = authenticatedUser.getUserId();
+                log.info("user_seq_no가 비어있어서 JWT에서 추출: [{}]", userSeqNo);
             }
             
+            log.info("최종 사용할 userSeqNo: [{}]", userSeqNo);
             log.info("멀티 기관 사용자정보조회 API 호출: userSeqNo={}", userSeqNo);
             
             // 멀티 기관 통합 조회
             Map<String, Object> integratedResult = bankService.getUserInfoFromAllInstitutions(userSeqNo);
+            log.info("멀티 기관 통합 조회 결과: {}", integratedResult);
             
             BasicResponse response = BasicResponse.builder()
                 .status(200)
@@ -64,10 +73,11 @@ public class OpenBankingProxyController {
                 .data(integratedResult)
                 .build();
             
+            log.info("=== /v2.0/user/me API 호출 성공 ===");
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("사용자정보조회 실패: userSeqNo={}, error={}", userSeqNo, e.getMessage());
+            log.error("사용자정보조회 실패: userSeqNo={}, error={}", userSeqNo, e.getMessage(), e);
             
             BasicResponse response = BasicResponse.builder()
                 .status(400)
@@ -75,8 +85,9 @@ public class OpenBankingProxyController {
                 .data(null)
                 .build();
             
+            log.info("=== /v2.0/user/me API 호출 실패 ===");
             return ResponseEntity.badRequest().body(response);
-        }
+                }
     }
     
     @GetMapping("/v2.0/account/list")
