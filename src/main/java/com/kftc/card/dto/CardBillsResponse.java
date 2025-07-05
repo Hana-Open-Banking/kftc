@@ -116,5 +116,10 @@ public class CardBillsResponse {
          * 신용/체크 구분 ("01":신용, "02":체크, "03":신용/체크혼용)
          */
         private String creditCheckType;
+
+        /**
+         * 카드 이미지 URL
+         */
+        private String cardImage;
     }
 } 

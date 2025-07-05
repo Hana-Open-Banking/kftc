@@ -116,5 +116,10 @@ public class CardBillDetailResponse {
          * 상품 구분 ("01":일시불, "02":신용판매할부, "03":현금서비스)
          */
         private String productType;
+
+        /**
+         * 카드 이미지 URL
+         */
+        private String cardImage;
     }
 } 
