@@ -136,7 +136,16 @@
                             <input type="checkbox" id="account_${account.fintechUseNum}" 
                                    value="${account.fintechUseNum}" 
                                    data-bank-code="${institution.bankCode}"
-                                   data-service-type="${institution.serviceType}">
+                                   data-service-type="${institution.serviceType}"
+                                   data-account-num="${account.accountNum || ''}"
+                                   data-account-alias="${account.accountAlias || account.accountHolderName}"
+                                   data-bank-name="${account.bankName}"
+                                   data-account-num-masked="${account.accountNumMasked}"
+                                   data-account-holder-name="${account.accountHolderName}"
+                                   data-account-type="${account.accountType}"
+                                   data-inquiry-agree-yn="${account.inquiryAgreeYn || 'Y'}"
+                                   data-transfer-agree-yn="${account.transferAgreeYn || 'Y'}"
+                                   data-payer-num="${account.payerNum || ''}">
                             <div class="account-info">
                                 <div class="account-name">
                                     ${account.accountAlias || account.accountHolderName}
@@ -208,19 +217,21 @@
 
             const selectedAccounts = [];
             selectedCheckboxes.forEach(checkbox => {
-                const accountDiv = checkbox.closest('.account-item');
-                const accountInfo = accountDiv.querySelector('.account-info');
-                const accountName = accountInfo.querySelector('.account-name').textContent.split('\n')[0].trim();
-                const accountDetails = accountInfo.querySelector('.account-details').textContent.split('|');
+                console.log('체크박스 데이터:', checkbox.dataset);
                 
                 selectedAccounts.push({
                     fintechUseNum: checkbox.value,
                     bankCode: checkbox.dataset.bankCode,
                     serviceType: checkbox.dataset.serviceType,
-                    accountAlias: accountName,
-                    bankName: accountDetails[0].trim(),
-                    accountNumMasked: accountDetails[1].split('\n')[0].trim(),
-                    accountHolderName: accountDetails[1].split('예금주: ')[1].trim()
+                    accountNum: checkbox.dataset.accountNum,
+                    accountAlias: checkbox.dataset.accountAlias,
+                    bankName: checkbox.dataset.bankName,
+                    accountNumMasked: checkbox.dataset.accountNumMasked,
+                    accountHolderName: checkbox.dataset.accountHolderName,
+                    accountType: checkbox.dataset.accountType,
+                    inquiryAgreeYn: checkbox.dataset.inquiryAgreeYn,
+                    transferAgreeYn: checkbox.dataset.transferAgreeYn,
+                    payerNum: checkbox.dataset.payerNum
                 });
             });
 

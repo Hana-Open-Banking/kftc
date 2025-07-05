@@ -371,6 +371,7 @@ public class PhoneVerificationService {
                         }
                         
                         account.put("fintechUseNum", fintechUseNum);
+                        account.put("accountNum", getString(accountData, "account_num"));
                         account.put("accountNumMasked", getString(accountData, "account_num_masked"));
                         account.put("accountAlias", getString(accountData, "account_alias"));
                         account.put("accountHolderName", getString(accountData, "account_holder_name"));
@@ -411,6 +412,7 @@ public class PhoneVerificationService {
                     default:
                         // 기본값 (은행 형태)
                         account.put("fintechUseNum", getString(accountData, "fintech_use_num"));
+                        account.put("accountNum", getString(accountData, "account_num"));
                         account.put("accountNumMasked", getString(accountData, "account_num_masked"));
                         account.put("accountAlias", getString(accountData, "account_alias"));
                         account.put("accountHolderName", getString(accountData, "account_holder_name"));
@@ -845,7 +847,11 @@ public class PhoneVerificationService {
                 continue;
             }
             
-            log.info("계좌 처리 중: fintechUseNum={}, 길이={}", fintechUseNum, fintechUseNum.length());
+            // 디버깅용 로그 추가
+            String accountNum = getString(accountData, "account_num");
+            String accountNumMasked = getString(accountData, "account_num_masked");
+            log.info("계좌 처리 중: fintechUseNum={}, accountNum={}, accountNumMasked={}", 
+                fintechUseNum, accountNum, accountNumMasked);
             
             try {
                 AccountMapping existingAccount = accountMappingRepository.findById(fintechUseNum).orElse(null);
@@ -857,6 +863,7 @@ public class PhoneVerificationService {
                         .userSeqNo(userSeqNo)
                         .orgCode("KFTC")
                         .bankCodeStd(bankCode)
+                        .accountNum(getString(accountData, "account_num"))
                         .accountNumMasked(getString(accountData, "account_num_masked"))
                         .accountAlias(getString(accountData, "account_alias"))
                         .accountSeq(getString(accountData, "account_seq"))
@@ -878,6 +885,7 @@ public class PhoneVerificationService {
                 } else {
                     log.info("기존 계좌 업데이트 시작: fintechUseNum={}", fintechUseNum);
                     existingAccount.updateAccountInfo(
+                        getString(accountData, "account_num"),
                         getString(accountData, "account_alias"),
                         getString(accountData, "inquiry_agree_yn"),
                         getString(accountData, "transfer_agree_yn")
@@ -1064,6 +1072,12 @@ public class PhoneVerificationService {
                     continue;
                 }
                 
+                // 디버깅용 로그 - 선택된 계좌 정보 확인
+                String accountNum = (String) accountInfo.get("accountNum");
+                String accountNumMasked = (String) accountInfo.get("accountNumMasked");
+                log.info("선택된 계좌 처리 중: fintechUseNum={}, accountNum={}, accountNumMasked={}", 
+                    fintechUseNum, accountNum, accountNumMasked);
+                
                 // 기존 계좌 확인
                 AccountMapping existingAccount = accountMappingRepository.findById(fintechUseNum).orElse(null);
                 
@@ -1074,6 +1088,7 @@ public class PhoneVerificationService {
                         .userSeqNo(userSeqNo)
                         .orgCode("KFTC")
                         .bankCodeStd(bankCode)
+                        .accountNum((String) accountInfo.get("accountNum"))
                         .accountNumMasked((String) accountInfo.get("accountNumMasked"))
                         .accountAlias((String) accountInfo.get("accountAlias"))
                         .accountSeq("001")
@@ -1095,13 +1110,19 @@ public class PhoneVerificationService {
                     
                     log.info("새로운 계좌 저장 완료: fintechUseNum={}", fintechUseNum);
                 } else {
-                    // 기존 계좌 활성화
+                    // 기존 계좌 업데이트
+                    existingAccount.updateAccountInfo(
+                        (String) accountInfo.get("accountNum"),
+                        (String) accountInfo.get("accountAlias"),
+                        (String) accountInfo.get("inquiryAgreeYn"),
+                        (String) accountInfo.get("transferAgreeYn")
+                    );
                     existingAccount.updateRegState("ACTIVE");
                     accountMappingRepository.saveAndFlush(existingAccount);
                     savedCount++;
                     savedAccountIds.add(fintechUseNum);
                     
-                    log.info("기존 계좌 활성화 완료: fintechUseNum={}", fintechUseNum);
+                    log.info("기존 계좌 업데이트 완료: fintechUseNum={}", fintechUseNum);
                 }
                 
             } catch (Exception e) {
