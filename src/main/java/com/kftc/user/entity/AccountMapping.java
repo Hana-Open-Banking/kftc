@@ -26,6 +26,9 @@ public class AccountMapping extends DateTimeEntity {
     @Column(name = "bank_code_std", length = 3, nullable = false)
     private String bankCodeStd; // 금융기관표준코드
     
+    @Column(name = "account_num", length = 16)
+    private String accountNum; // 실제 계좌번호
+    
     @Column(name = "account_num_masked", length = 64)
     private String accountNumMasked; // 계좌번호마스킹
     
@@ -67,7 +70,7 @@ public class AccountMapping extends DateTimeEntity {
     
     @Builder
     public AccountMapping(String fintechUseNum, String userSeqNo, String orgCode, String bankCodeStd,
-                         String accountNumMasked, String accountAlias, String accountSeq,
+                         String accountNum, String accountNumMasked, String accountAlias, String accountSeq,
                          String accountHolderName, String accountType, String inquiryAgreeYn,
                          String transferAgreeYn, String regState, String payerNum, String bankName,
                          String savingsBankName, String inquiryAgreeDtime, String transferAgreeDtime) {
@@ -75,6 +78,7 @@ public class AccountMapping extends DateTimeEntity {
         this.userSeqNo = userSeqNo;
         this.orgCode = orgCode;
         this.bankCodeStd = bankCodeStd;
+        this.accountNum = accountNum;
         this.accountNumMasked = accountNumMasked;
         this.accountAlias = accountAlias;
         this.accountSeq = accountSeq;
@@ -90,7 +94,8 @@ public class AccountMapping extends DateTimeEntity {
         this.transferAgreeDtime = transferAgreeDtime;
     }
     
-    public void updateAccountInfo(String accountAlias, String inquiryAgreeYn, String transferAgreeYn) {
+    public void updateAccountInfo(String accountNum, String accountAlias, String inquiryAgreeYn, String transferAgreeYn) {
+        this.accountNum = accountNum;
         this.accountAlias = accountAlias;
         this.inquiryAgreeYn = inquiryAgreeYn;
         this.transferAgreeYn = transferAgreeYn;

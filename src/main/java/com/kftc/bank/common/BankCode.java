@@ -17,7 +17,10 @@ public enum BankCode {
     IBK("003", "기업은행", "ibk"),
     KDB("002", "산업은행", "kdb"),
     KAKAO("090", "카카오뱅크", "kakao"),
-    TOSS("092", "토스뱅크", "toss");
+    TOSS("092", "토스뱅크", "toss"),
+    KOOKMIN_CARD("301", "국민카드", "kookmin-card"),
+    HYUNDAI_CAPITAL("054", "현대캐피탈", "hyundai-capital"),
+    SAMSUNG_FIRE("221", "삼성화재", "samsung-fire");
     
     private final String code;          // 기관 코드
     private final String bankName;      // 은행명
