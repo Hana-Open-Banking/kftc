@@ -87,17 +87,25 @@ public class CardCompanyService {
             );
             
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                log.info("카드목록조회 카드사 연동 성공 - userSeqNo: {}, cardCnt: {}", 
-                        request.getUserSeqNo(), response.getBody().getCardCnt());
-                return response.getBody();
+                CardListResponse cardListResponse = response.getBody();
+                
+                // 카드사 응답의 cardImage 필드를 KFTC 응답에 포함
+                if (cardListResponse.getCardList() != null) {
+                    cardListResponse.getCardList().forEach(cardInfo -> {
+                        // cardImage 필드가 이미 포함되어 있으므로 추가 처리 필요 없음
+                        log.debug("카드 이미지 정보 포함 - cardId: {}, cardImage: {}", 
+                                cardInfo.getCardId(), cardInfo.getCardImage());
+                    });
+                }
+                
+                return cardListResponse;
             } else {
-                log.error("카드목록조회 카드사 연동 실패 - HTTP Status: {}, Response: {}", 
-                         response.getStatusCode(), response.getBody());
+                log.error("카드사 서버 응답 실패 - status: {}", response.getStatusCode());
                 throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
             }
             
         } catch (Exception e) {
-            log.error("카드목록조회 카드사 연동 중 오류 - bankCodeStd: {}, error: {}", request.getBankCodeStd(), e.getMessage(), e);
+            log.error("카드목록조회 실패", e);
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }

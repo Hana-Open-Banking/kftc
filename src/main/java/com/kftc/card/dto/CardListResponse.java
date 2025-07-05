@@ -101,5 +101,10 @@ public class CardListResponse {
          * 본인/가족 구분 ("1":본인, "2":가족)
          */
         private String cardMemberType;
+
+        /**
+         * 카드 이미지 URL
+         */
+        private String cardImage;
     }
 } 
