@@ -158,18 +158,28 @@ public class PhoneVerificationService {
             }
             
             // CI 포함 응답 객체 생성
-            return java.util.Map.of(
-                "verified", true,
-                "ci", ci,
-                "userSeqNo", userSeqNo,
-                "userName", userName,
-                "phoneNumber", phoneNumber,
-                "birthDate", birthDate,
-                "gender", gender,
-                "availableInstitutions", availableInstitutions,
-                "requiresConsent", true,
-                "timestamp", System.currentTimeMillis()
-            );
+            Map<String, Object> response = new HashMap<>();
+            response.put("verified", true);
+            response.put("ci", ci);
+            response.put("userSeqNo", userSeqNo);
+            response.put("userName", userName);
+            response.put("phoneNumber", phoneNumber);
+            response.put("birthDate", birthDate);
+            response.put("gender", gender);
+            response.put("availableInstitutions", availableInstitutions);
+            response.put("hasAccounts", !availableInstitutions.isEmpty());
+            response.put("institutionCount", availableInstitutions.size());
+            response.put("requiresConsent", true);
+            response.put("canProceedWithoutAccounts", true); // 계좌 없이도 진행 가능
+            response.put("timestamp", System.currentTimeMillis());
+            
+            if (availableInstitutions.isEmpty()) {
+                response.put("message", "계좌 정보가 발견되지 않았습니다. 계좌 등록 없이 진행하시겠습니까?");
+            } else {
+                response.put("message", "계좌 정보가 발견되었습니다. 연동할 계좌를 선택해주세요.");
+            }
+            
+            return response;
         }
         
         // 기본 응답 (기존 호환성 유지)
@@ -291,16 +301,21 @@ public class PhoneVerificationService {
         log.info("금융기관 서비스 탐색 완료: userSeqNo={}, 이용가능기관수={}", 
             userSeqNo, availableInstitutions.size());
         
-        // 반환할 데이터 상세 로그
-        for (int i = 0; i < availableInstitutions.size(); i++) {
-            Map<String, Object> institution = availableInstitutions.get(i);
-            log.info("기관 {}번째: {}", i, institution);
-            Object accountListObj = institution.get("accountList");
-            if (accountListObj instanceof List) {
-                List<?> accounts = (List<?>) accountListObj;
-                log.info("기관 {}번째 계좌 목록 크기: {}", i, accounts.size());
-                for (int j = 0; j < accounts.size(); j++) {
-                    log.info("  계좌 {}: {}", j, accounts.get(j));
+        // 계좌 정보가 없어도 정상 처리
+        if (availableInstitutions.isEmpty()) {
+            log.info("📋 사용자 {}에 대한 계좌 정보가 발견되지 않았습니다. 계좌 등록 없이 진행합니다.", userSeqNo);
+        } else {
+            // 반환할 데이터 상세 로그
+            for (int i = 0; i < availableInstitutions.size(); i++) {
+                Map<String, Object> institution = availableInstitutions.get(i);
+                log.info("기관 {}번째: {}", i, institution);
+                Object accountListObj = institution.get("accountList");
+                if (accountListObj instanceof List) {
+                    List<?> accounts = (List<?>) accountListObj;
+                    log.info("기관 {}번째 계좌 목록 크기: {}", i, accounts.size());
+                    for (int j = 0; j < accounts.size(); j++) {
+                        log.info("  계좌 {}: {}", j, accounts.get(j));
+                    }
                 }
             }
         }
