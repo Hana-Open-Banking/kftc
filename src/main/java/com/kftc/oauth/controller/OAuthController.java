@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -80,12 +82,12 @@ public class OAuthController {
         AuthSession session = new AuthSession(clientId, redirectUri, scope, state);
         authSessions.put(sessionId, session);
         
-        // 휴대폰 인증 화면 HTML 반환
-        String phoneAuthHtml = generatePhoneAuthHtml(sessionId);
-        
-        return ResponseEntity.ok()
-                .header("Content-Type", "text/html; charset=UTF-8")
-                .body(phoneAuthHtml);
+        // 정적 휴대폰 인증 페이지로 리디렉트
+        String redirectUrl = "/pages/phone-auth.html?sessionId=" + sessionId;
+
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, redirectUrl)
+                .build();
     }
     
     /**
@@ -590,187 +592,6 @@ public class OAuthController {
         return java.util.UUID.randomUUID().toString();
     }
     
-    private String generatePhoneAuthHtml(String sessionId) {
-        return """
-            <!DOCTYPE html>
-            <html lang="ko">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>오픈뱅킹 인증</title>
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f5f5f5; }
-                    .auth-container { max-width: 400px; margin: 0 auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-                    .step-indicator { display: flex; justify-content: center; margin-bottom: 30px; }
-                    .step { width: 30px; height: 30px; border-radius: 50%%; margin: 0 20px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
-                    .step.active { background-color: #007bff; }
-                    .step.inactive { background-color: #dee2e6; color: #6c757d; }
-                    .form-group { margin: 20px 0; text-align: left; }
-                    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-                    .form-group input { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
-                    .btn { background-color: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%%; margin: 10px 0; }
-                    .btn:hover { background-color: #0056b3; }
-                    .btn:disabled { background-color: #6c757d; cursor: not-allowed; }
-                    .verification-step { display: none; }
-                    .info-text { font-size: 14px; color: #666; margin: 10px 0; }
-                </style>
-            </head>
-            <body>
-                <div class="auth-container">
-                    <h2>🏦 오픈뱅킹 인증</h2>
-                    
-                    <div class="step-indicator">
-                        <div class="step active">1</div>
-                        <div class="step inactive">2</div>
-                    </div>
-                    
-                    <div id="phone-step">
-                        <h3>📱 사용자 정보 입력</h3>
-                        <p class="info-text">본인 명의의 휴대폰으로 인증을 진행합니다.</p>
-                        
-                        <div class="form-group">
-                            <label for="userName">이름</label>
-                            <input type="text" id="userName" placeholder="홍길동" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="userEmail">이메일</label>
-                            <input type="email" id="userEmail" placeholder="hong@example.com" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="socialSecurityNumber">주민등록번호</label>
-                            <input type="text" id="socialSecurityNumber" placeholder="901010-1234567" maxlength="14" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="phoneNumber">휴대폰 번호</label>
-                            <input type="tel" id="phoneNumber" placeholder="010-1234-5678" maxlength="13" required>
-                        </div>
-                        
-                        <button class="btn" onclick="sendVerificationCode()">인증번호 발송</button>
-                    </div>
-                    
-                    <div id="verification-step" class="verification-step">
-                        <h3>📨 인증번호 확인</h3>
-                        <p class="info-text">발송된 인증번호를 입력해주세요.</p>
-                        
-                        <div class="form-group">
-                            <label for="verificationCode">인증번호</label>
-                            <input type="text" id="verificationCode" placeholder="6자리 숫자" maxlength="6">
-                </div>
-                
-                        <button class="btn" onclick="verifyCode()">인증번호 확인</button>
-                        <button class="btn" style="background-color: #6c757d;" onclick="resendCode()">재발송</button>
-                    </div>
-                </div>
-                
-                <script>
-                let sessionId = '%s';
-                let phoneNumber = '';
-                
-                function formatPhoneNumber(value) {
-                    const numbers = value.replace(/[^\\d]/g, '');
-                    if (numbers.length <= 3) return numbers;
-                    if (numbers.length <= 7) return numbers.slice(0, 3) + '-' + numbers.slice(3);
-                    return numbers.slice(0, 3) + '-' + numbers.slice(3, 7) + '-' + numbers.slice(7, 11);
-                }
-                
-                document.getElementById('phoneNumber').addEventListener('input', function(e) {
-                    e.target.value = formatPhoneNumber(e.target.value);
-                });
-                
-                function formatSocialSecurityNumber(value) {
-                    const numbers = value.replace(/[^\\d]/g, '');
-                    if (numbers.length <= 6) return numbers;
-                    return numbers.slice(0, 6) + '-' + numbers.slice(6, 13);
-                }
-                
-                document.getElementById('socialSecurityNumber').addEventListener('input', function(e) {
-                    e.target.value = formatSocialSecurityNumber(e.target.value);
-                });
-                
-                async function sendVerificationCode() {
-                    const userName = document.getElementById('userName').value.trim();
-                    const userEmail = document.getElementById('userEmail').value.trim();
-                    const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.replace(/[^\\d]/g, '');
-                    phoneNumber = document.getElementById('phoneNumber').value.replace(/[^\\d]/g, '');
-                    
-                    if (!userName) {
-                        alert('이름을 입력해주세요.');
-                        return;
-                    }
-                    
-                    if (!userEmail || !userEmail.includes('@')) {
-                        alert('올바른 이메일을 입력해주세요.');
-                        return;
-                    }
-                    
-                    if (socialSecurityNumber.length !== 13) {
-                        alert('올바른 주민등록번호를 입력해주세요. (13자리)');
-                        return;
-                    }
-                    
-                    if (phoneNumber.length !== 11) {
-                        alert('올바른 휴대폰 번호를 입력해주세요.');
-                        return;
-                    }
-                    
-                                            try {
-                            const response = await fetch('/oauth/phone/send', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                body: `session_id=${sessionId}&phone_number=${phoneNumber}&user_name=${encodeURIComponent(userName)}&user_email=${encodeURIComponent(userEmail)}&social_security_number=${socialSecurityNumber}`
-                            });
-                        
-                        const result = await response.json();
-                        if (response.ok) {
-                            alert('인증번호가 발송되었습니다.');
-                            document.getElementById('phone-step').style.display = 'none';
-                            document.getElementById('verification-step').style.display = 'block';
-                        } else {
-                            alert('인증번호 발송에 실패했습니다: ' + result.message);
-                        }
-                    } catch (error) {
-                        alert('네트워크 오류가 발생했습니다.');
-                    }
-                }
-                
-                async function verifyCode() {
-                    const verificationCode = document.getElementById('verificationCode').value;
-                    
-                    if (verificationCode.length !== 6) {
-                        alert('6자리 인증번호를 입력해주세요.');
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch('/oauth/phone/verify', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `session_id=${sessionId}&phone_number=${phoneNumber}&verification_code=${verificationCode}`
-                        });
-                        
-                        if (response.ok) {
-                            document.body.innerHTML = await response.text();
-                        } else {
-                            const result = await response.text();
-                            document.body.innerHTML = result;
-                        }
-                    } catch (error) {
-                        alert('네트워크 오류가 발생했습니다.');
-                    }
-                }
-                
-                function resendCode() {
-                    document.getElementById('phone-step').style.display = 'block';
-                    document.getElementById('verification-step').style.display = 'none';
-                }
-            </script>
-        </body>
-        </html>
-            """.formatted(sessionId);
-    }
     
     private String generateConsentHtml(String sessionId, AuthSession session) {
         log.debug("동의 페이지 HTML 생성: sessionId={}, session={}", sessionId, session);
