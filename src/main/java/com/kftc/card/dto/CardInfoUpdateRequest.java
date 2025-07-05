@@ -32,7 +32,7 @@ public class CardInfoUpdateRequest {
     @JsonProperty("user_seq_no")
     @NotBlank
     @Size(max = 10)
-    @Schema(description = "사용자일련번호", example = "U123456789")
+    @Schema(description = "사용자일련번호", example = "1000000001")
     private String userSeqNo;
     
     @NotBlank

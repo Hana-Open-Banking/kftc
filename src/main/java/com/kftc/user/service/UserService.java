@@ -144,8 +144,20 @@ public class UserService {
         Optional<String> maxUserSeqNo = userRepository.findMaxUserSeqNo();
         
         if (maxUserSeqNo.isPresent()) {
-            long nextSeqNo = Long.parseLong(maxUserSeqNo.get()) + 1;
-            return String.format("%010d", nextSeqNo);
+            String maxSeqNo = maxUserSeqNo.get();
+            try {
+                // 숫자가 아닌 문자열(목업 데이터)이 있는 경우 처리
+                if (!maxSeqNo.matches("\\d+")) {
+                    log.warn("목업 데이터 발견: {}. 새로운 번호 체계로 시작합니다.", maxSeqNo);
+                    return "1000000001"; // 시작 번호
+                }
+                
+                long nextSeqNo = Long.parseLong(maxSeqNo) + 1;
+                return String.format("%010d", nextSeqNo);
+            } catch (NumberFormatException e) {
+                log.error("사용자 번호 변환 실패: {}. 새로운 번호 체계로 시작합니다.", maxSeqNo);
+                return "1000000001"; // 시작 번호
+            }
         } else {
             return "1000000001"; // 시작 번호
         }

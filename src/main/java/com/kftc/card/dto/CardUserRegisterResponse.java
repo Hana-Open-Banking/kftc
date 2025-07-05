@@ -51,6 +51,6 @@ public class CardUserRegisterResponse {
     private String bankName;
     
     @JsonProperty("user_seq_no")
-    @Schema(description = "사용자일련번호", example = "U123456789")
+    @Schema(description = "사용자일련번호", example = "1000000001")
     private String userSeqNo;
 } 
