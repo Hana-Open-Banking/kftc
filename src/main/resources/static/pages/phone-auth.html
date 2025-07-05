@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오픈뱅킹 인증</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f5f5f5; }
+        .auth-container { max-width: 400px; margin: 0 auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .step-indicator { display: flex; justify-content: center; margin-bottom: 30px; }
+        .step { width: 30px; height: 30px; border-radius: 50%; margin: 0 20px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .step.active { background-color: #007bff; }
+        .step.inactive { background-color: #dee2e6; color: #6c757d; }
+        .form-group { margin: 20px 0; text-align: left; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+        .btn { background-color: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; margin: 10px 0; }
+        .btn:hover { background-color: #0056b3; }
+        .btn:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .verification-step { display: none; }
+        .info-text { font-size: 14px; color: #666; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <h2>🏦 오픈뱅킹 인증</h2>
+
+        <div class="step-indicator">
+            <div class="step active">1</div>
+            <div class="step inactive">2</div>
+        </div>
+
+        <div id="phone-step">
+            <h3>📱 사용자 정보 입력</h3>
+            <p class="info-text">본인 명의의 휴대폰으로 인증을 진행합니다.</p>
+
+            <div class="form-group">
+                <label for="userName">이름</label>
+                <input type="text" id="userName" placeholder="홍길동" required>
+            </div>
+
+            <div class="form-group">
+                <label for="userEmail">이메일</label>
+                <input type="email" id="userEmail" placeholder="hong@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="socialSecurityNumber">주민등록번호</label>
+                <input type="text" id="socialSecurityNumber" placeholder="901010-1234567" maxlength="14" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phoneNumber">휴대폰 번호</label>
+                <input type="tel" id="phoneNumber" placeholder="010-1234-5678" maxlength="13" required>
+            </div>
+
+            <button class="btn" onclick="sendVerificationCode()">인증번호 발송</button>
+        </div>
+
+        <div id="verification-step" class="verification-step">
+            <h3>📨 인증번호 확인</h3>
+            <p class="info-text">발송된 인증번호를 입력해주세요.</p>
+
+            <div class="form-group">
+                <label for="verificationCode">인증번호</label>
+                <input type="text" id="verificationCode" placeholder="6자리 숫자" maxlength="6">
+            </div>
+
+            <button class="btn" onclick="verifyCode()">인증번호 확인</button>
+            <button class="btn" style="background-color: #6c757d;" onclick="resendCode()">재발송</button>
+        </div>
+    </div>
+
+    <script src="/js/phone-auth.js"></script>
+</body>
+</html>
