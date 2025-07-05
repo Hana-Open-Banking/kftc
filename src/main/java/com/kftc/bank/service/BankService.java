@@ -689,7 +689,7 @@ public class BankService {
      */
     public TransferResponse withdrawTransfer(String fintechUseNum, TransferRequest request, String accessToken) {
         log.info("=== 출금이체 시작 ===");
-        log.info("핀테크이용번호: {}, 이체금액: {}", fintechUseNum, request.getTranAmtAsString());
+        log.info("핀테크이용번호: {}, 이체금액: {}", fintechUseNum, String.valueOf(request.getTranAmtAsLong()));
         
         try {
             // 1. 계좌 매핑 정보 조회
@@ -749,7 +749,7 @@ public class BankService {
      */
     public TransferResponse depositTransfer(String fintechUseNum, TransferRequest request, String accessToken) {
         log.info("=== 입금이체 시작 ===");
-        log.info("핀테크이용번호: {}, 이체금액: {}", fintechUseNum, request.getTranAmtAsString());
+        log.info("핀테크이용번호: {}, 이체금액: {}", fintechUseNum, String.valueOf(request.getTranAmtAsLong()));
         
         try {
             // 1. 계좌 매핑 정보 조회
@@ -805,76 +805,131 @@ public class BankService {
     }
     
     /**
-     * 출금이체 요청 데이터 생성
+     * 출금이체 요청 데이터 생성 (API 명세서 준수)
      */
     private Map<String, Object> createWithdrawTransferData(TransferRequest request, String bankTranId, AccountMapping accountMapping) {
         Map<String, Object> data = new HashMap<>();
         
-        // 공통 헤더 정보
+        // 헤더 정보
         data.put("bank_tran_id", bankTranId);
-        data.put("cntr_account_type", "N"); // 계좌구분 (N: 계좌번호)
-        data.put("cntr_account_num", accountMapping.getAccountNum());
-        data.put("dps_print_content", request.getEffectivePrintContent());
         
-        // 핀테크이용번호 (Body에 포함)
+        // 본체 정보 - 출금이체 API 명세서 기준
+        data.put("cntr_account_type", request.getEffectiveCntrAccountType());
+        data.put("cntr_account_num", request.getCntrAccountNum() != null ? request.getCntrAccountNum() : accountMapping.getAccountNum());
+        data.put("dps_print_content", request.getDpsPrintContent() != null ? request.getDpsPrintContent() : "출금이체");
         data.put("fintech_use_num", request.getEffectiveFintechUseNum());
         
-        // 이체 금액 정보
-        data.put("tran_amt", request.getTranAmtAsString());
-        data.put("tran_dtime", getCurrentDateTime());
+        // 선택 필드
+        if (request.getWdPrintContent() != null) {
+            data.put("wd_print_content", request.getWdPrintContent());
+        }
         
-        // 출금 고객 정보
+        // 필수 필드
+        data.put("tran_amt", String.valueOf(request.getTranAmtAsLong()));
+        data.put("tran_dtime", request.getTranDtime() != null ? request.getTranDtime() : getCurrentDateTime());
         data.put("req_client_name", request.getReqClientName() != null ? request.getReqClientName() : accountMapping.getAccountHolderName());
-        data.put("req_client_bank_code", accountMapping.getBankCodeStd());
-        data.put("req_client_account_num", accountMapping.getAccountNum());
-        data.put("req_client_num", request.getReqClientNum() != null ? request.getReqClientNum() : "");
-        
-        // 수취인 정보
-        data.put("recv_client_name", request.getEffectiveRecvClientName());
-        data.put("recv_client_bank_code", request.getEffectiveBankCode());
-        data.put("recv_client_account_num", request.getEffectiveAccountNumber());
-        
-        // 기타 정보
+        data.put("req_client_num", request.getReqClientNum() != null ? request.getReqClientNum() : "REQ" + System.currentTimeMillis());
         data.put("transfer_purpose", request.getEffectiveTransferPurpose());
-        data.put("recv_client_num", request.getRecvClientNum() != null ? request.getRecvClientNum() : "");
-        data.put("req_from_offline_yn", request.getReqFromOfflineYn() != null ? request.getReqFromOfflineYn() : "N");
+        
+        // 선택 필드들
+        if (request.getReqClientBankCode() != null) {
+            data.put("req_client_bank_code", request.getReqClientBankCode());
+        }
+        if (request.getReqClientAccountNum() != null) {
+            data.put("req_client_account_num", request.getReqClientAccountNum());
+        }
+        if (request.getReqClientFintechUseNum() != null) {
+            data.put("req_client_fintech_use_num", request.getReqClientFintechUseNum());
+        }
+        
+        data.put("req_from_offline_yn", request.getEffectiveReqFromOfflineYn());
+        
+        // 하위기관 정보 (선택)
+        if (request.getSubFmcName() != null) {
+            data.put("sub_fmc_name", request.getSubFmcName());
+        }
+        if (request.getSubFmcNum() != null) {
+            data.put("sub_fmc_num", request.getSubFmcNum());
+        }
+        if (request.getSubFmcBusinessNum() != null) {
+            data.put("sub_fmc_business_num", request.getSubFmcBusinessNum());
+        }
+        
+        // 최종수취인 정보 (선택)
+        if (request.getRecvClientName() != null) {
+            data.put("recv_client_name", request.getRecvClientName());
+        }
+        if (request.getRecvClientBankCode() != null) {
+            data.put("recv_client_bank_code", request.getRecvClientBankCode());
+        }
+        if (request.getRecvClientAccountNum() != null) {
+            data.put("recv_client_account_num", request.getRecvClientAccountNum());
+        }
         
         return data;
     }
     
     /**
-     * 입금이체 요청 데이터 생성
+     * 입금이체 요청 데이터 생성 (API 명세서 준수)
      */
     private Map<String, Object> createDepositTransferData(TransferRequest request, String bankTranId, AccountMapping accountMapping) {
         Map<String, Object> data = new HashMap<>();
         
-        // 공통 헤더 정보
+        // 헤더 정보
         data.put("bank_tran_id", bankTranId);
-        data.put("cntr_account_type", "N"); // 계좌구분 (N: 계좌번호)
-        data.put("cntr_account_num", accountMapping.getAccountNum());
-        data.put("dps_print_content", request.getEffectivePrintContent());
         
-        // 핀테크이용번호 (Body에 포함)
+        // 본체 정보 - 입금이체 API 명세서 기준
+        data.put("cntr_account_type", request.getEffectiveCntrAccountType());
+        data.put("cntr_account_num", request.getCntrAccountNum() != null ? request.getCntrAccountNum() : accountMapping.getAccountNum());
+        data.put("dps_print_content", request.getDpsPrintContent() != null ? request.getDpsPrintContent() : "입금이체");
         data.put("fintech_use_num", request.getEffectiveFintechUseNum());
         
-        // 이체 금액 정보
-        data.put("tran_amt", request.getTranAmtAsString());
-        data.put("tran_dtime", getCurrentDateTime());
+        // 선택 필드
+        if (request.getWdPrintContent() != null) {
+            data.put("wd_print_content", request.getWdPrintContent());
+        }
         
-        // 입금 고객 정보 (수취인)
-        data.put("recv_client_name", accountMapping.getAccountHolderName());
-        data.put("recv_client_bank_code", accountMapping.getBankCodeStd());
-        data.put("recv_client_account_num", accountMapping.getAccountNum());
-        
-        // 송금인 정보
+        // 필수 필드
+        data.put("tran_amt", String.valueOf(request.getTranAmtAsLong()));
+        data.put("tran_dtime", request.getTranDtime() != null ? request.getTranDtime() : getCurrentDateTime());
         data.put("req_client_name", request.getReqClientName() != null ? request.getReqClientName() : "송금인");
-        data.put("req_client_bank_code", request.getReqClientBankCode() != null ? request.getReqClientBankCode() : "");
-        data.put("req_client_account_num", request.getReqClientAccountNum() != null ? request.getReqClientAccountNum() : "");
-        data.put("req_client_num", request.getReqClientNum() != null ? request.getReqClientNum() : "");
-        
-        // 기타 정보
+        data.put("req_client_num", request.getReqClientNum() != null ? request.getReqClientNum() : "REQ" + System.currentTimeMillis());
         data.put("transfer_purpose", request.getEffectiveTransferPurpose());
-        data.put("req_from_offline_yn", request.getReqFromOfflineYn() != null ? request.getReqFromOfflineYn() : "N");
+        
+        // 선택 필드들
+        if (request.getReqClientBankCode() != null) {
+            data.put("req_client_bank_code", request.getReqClientBankCode());
+        }
+        if (request.getReqClientAccountNum() != null) {
+            data.put("req_client_account_num", request.getReqClientAccountNum());
+        }
+        if (request.getReqClientFintechUseNum() != null) {
+            data.put("req_client_fintech_use_num", request.getReqClientFintechUseNum());
+        }
+        
+        data.put("req_from_offline_yn", request.getEffectiveReqFromOfflineYn());
+        
+        // 하위기관 정보 (선택)
+        if (request.getSubFmcName() != null) {
+            data.put("sub_fmc_name", request.getSubFmcName());
+        }
+        if (request.getSubFmcNum() != null) {
+            data.put("sub_fmc_num", request.getSubFmcNum());
+        }
+        if (request.getSubFmcBusinessNum() != null) {
+            data.put("sub_fmc_business_num", request.getSubFmcBusinessNum());
+        }
+        
+        // 최종수취인 정보 (선택)
+        if (request.getRecvClientName() != null) {
+            data.put("recv_client_name", request.getRecvClientName());
+        }
+        if (request.getRecvClientBankCode() != null) {
+            data.put("recv_client_bank_code", request.getRecvClientBankCode());
+        }
+        if (request.getRecvClientAccountNum() != null) {
+            data.put("recv_client_account_num", request.getRecvClientAccountNum());
+        }
         
         return data;
     }
@@ -908,18 +963,18 @@ public class BankService {
             .fintechUseNum(fintechUseNum)
             .accountNumMasked(accountMapping.getAccountNumMasked())
             .accountHolderName(accountMapping.getAccountHolderName())
-            .tranAmt(request.getTranAmtAsString())
+            .tranAmt(String.valueOf(request.getTranAmtAsLong()))
             .balanceAmt(balanceAmt)
             .availableAmt(balanceAmt)
             .reqClientName(request.getReqClientName())
             .reqClientBankCode(request.getReqClientBankCode())
             .reqClientAccountNum(request.getReqClientAccountNum())
-            .recvClientName(request.getEffectiveRecvClientName())
-            .recvClientBankCode(request.getEffectiveBankCode())
-            .recvClientAccountNum(request.getEffectiveAccountNumber())
+            .recvClientName(request.getRecvClientName())
+            .recvClientBankCode(request.getRecvClientBankCode())
+            .recvClientAccountNum(request.getRecvClientAccountNum())
             .transferPurpose(request.getEffectiveTransferPurpose())
             .tranDtime(getCurrentDateTime())
-            .printContent(request.getEffectivePrintContent())
+            .printContent(request.getDpsPrintContent())
             .bankRspCode("000")
             .bankRspMessage("정상처리")
             .build();
