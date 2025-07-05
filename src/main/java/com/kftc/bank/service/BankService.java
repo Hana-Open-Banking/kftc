@@ -2,7 +2,9 @@ package com.kftc.bank.service;
 
 import com.kftc.bank.common.*;
 import com.kftc.user.entity.UserConsentFinancialInstitution;
+import com.kftc.user.entity.AccountMapping;
 import com.kftc.user.repository.UserConsentFinancialInstitutionRepository;
+import com.kftc.user.repository.AccountMappingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +29,7 @@ public class BankService {
     
     private final RestTemplate restTemplate;
     private final UserConsentFinancialInstitutionRepository consentRepository;
+    private final AccountMappingRepository accountMappingRepository;
     private final ExecutorService executor = Executors.newFixedThreadPool(10);
     
     // 금융기관별 baseUrl 설정
@@ -72,37 +75,65 @@ public class BankService {
      * 멀티 기관 사용자정보조회 (오픈뱅킹 표준)
      */
     public Map<String, Object> getUserInfoFromAllInstitutions(String userSeqNo) {
-        log.info("멀티 기관 사용자정보조회 시작: userSeqNo={}", userSeqNo);
+        log.info("=== 멀티 기관 사용자정보조회 시작 ===");
+        log.info("요청된 userSeqNo: [{}]", userSeqNo);
         
         try {
-            // 1. 사용자가 연동한 금융기관 목록 조회
-            List<UserConsentFinancialInstitution> consentList = 
-                consentRepository.findByUserSeqNoAndRegStatus(userSeqNo, "ACTIVE");
+            log.info("=== 사용자정보조회 디버깅 시작 ===");
+            log.info("요청된 userSeqNo: [{}]", userSeqNo);
             
-            if (consentList.isEmpty()) {
-                log.info("연동된 금융기관이 없습니다: userSeqNo={}", userSeqNo);
+            // 1. 직접 계좌 매핑 정보 조회 (실제 계좌 데이터)
+            log.info("AccountMapping 테이블에서 userSeqNo로 조회 시작...");
+            List<com.kftc.user.entity.AccountMapping> accountMappings = 
+                accountMappingRepository.findByUserSeqNo(userSeqNo);
+            
+            log.info("AccountMapping 조회 결과: 총 {}건", accountMappings.size());
+            
+            // 조회 결과 상세 로그
+            if (!accountMappings.isEmpty()) {
+                log.info("조회된 계좌 정보:");
+                for (int i = 0; i < accountMappings.size(); i++) {
+                    com.kftc.user.entity.AccountMapping mapping = accountMappings.get(i);
+                    log.info("  {}번째 계좌: userSeqNo=[{}], fintechUseNum=[{}], bankName=[{}], accountAlias=[{}]", 
+                            i+1, mapping.getUserSeqNo(), mapping.getFintechUseNum(), mapping.getBankName(), mapping.getAccountAlias());
+                }
+            }
+            
+            if (accountMappings.isEmpty()) {
+                log.warn("=== 연동된 계좌가 없습니다 ===");
+                log.warn("userSeqNo: [{}]", userSeqNo);
+                log.warn("AccountMapping 테이블에서 해당 userSeqNo를 가진 레코드가 없습니다.");
+                
+                // 전체 AccountMapping 테이블의 첫 5개 레코드 조회해서 디버깅
+                log.warn("전체 AccountMapping 테이블 조회 시작...");
+                List<com.kftc.user.entity.AccountMapping> allMappings = accountMappingRepository.findAll();
+                log.warn("전체 AccountMapping 레코드 수: {}", allMappings.size());
+                
+                if (!allMappings.isEmpty()) {
+                    log.warn("AccountMapping 테이블의 첫 3개 레코드:");
+                    for (int i = 0; i < Math.min(3, allMappings.size()); i++) {
+                        com.kftc.user.entity.AccountMapping mapping = allMappings.get(i);
+                        log.warn("  {}번째: userSeqNo=[{}], fintechUseNum=[{}], bankName=[{}]", 
+                                i+1, mapping.getUserSeqNo(), mapping.getFintechUseNum(), mapping.getBankName());
+                    }
+                } else {
+                    log.warn("AccountMapping 테이블이 완전히 비어있습니다!");
+                }
+                
+                log.info("=== 멀티 기관 사용자정보조회 종료 (빈 응답) ===");
                 return createEmptyResponse(userSeqNo);
             }
             
-            log.info("연동된 금융기관 수: {}", consentList.size());
+            log.info("연동된 계좌 수: {}", accountMappings.size());
             
-            // 2. 각 금융기관에 병렬로 요청
-            List<CompletableFuture<InstitutionResponse>> futures = consentList.stream()
-                .map(consent -> CompletableFuture.supplyAsync(() -> 
-                    requestUserInfoFromInstitution(userSeqNo, consent.getBankCodeStd()), executor))
-                .collect(Collectors.toList());
-            
-            // 3. 모든 응답 수집
-            List<InstitutionResponse> responses = futures.stream()
-                .map(CompletableFuture::join)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-            
-            // 4. 응답 통합
-            return createIntegratedResponse(userSeqNo, responses);
+            // 2. 계좌 매핑 데이터에서 직접 응답 생성 (실제 계좌 데이터 사용)
+            Map<String, Object> response = createDirectResponse(userSeqNo, accountMappings);
+            log.info("=== 멀티 기관 사용자정보조회 성공 ===");
+            return response;
             
         } catch (Exception e) {
-            log.error("멀티 기관 사용자정보조회 중 오류: userSeqNo={}, error={}", userSeqNo, e.getMessage());
+            log.error("멀티 기관 사용자정보조회 중 오류: userSeqNo={}, error={}", userSeqNo, e.getMessage(), e);
+            log.info("=== 멀티 기관 사용자정보조회 오류 ===");
             return createErrorResponse(userSeqNo, e.getMessage());
         }
     }
@@ -204,6 +235,60 @@ public class BankService {
         }
         
         return info;
+    }
+    
+    /**
+     * 계좌 매핑 데이터에서 직접 응답 생성 (실제 계좌 데이터 사용)
+     */
+    private Map<String, Object> createDirectResponse(String userSeqNo, List<AccountMapping> accountMappings) {
+        log.info("계좌 매핑 데이터로 직접 응답 생성: userSeqNo={}, 계좌수={}", userSeqNo, accountMappings.size());
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("api_tran_id", UUID.randomUUID().toString());
+        result.put("api_tran_dtm", getCurrentDateTime());
+        result.put("rsp_code", "A0000");
+        result.put("rsp_message", "");
+        result.put("user_seq_no", userSeqNo);
+        result.put("res_cnt", String.valueOf(accountMappings.size()));
+        
+        // 계좌 목록 변환
+        List<Map<String, Object>> resList = accountMappings.stream()
+            .map(account -> {
+                Map<String, Object> accountInfo = new HashMap<>();
+                accountInfo.put("fintech_use_num", account.getFintechUseNum());
+                accountInfo.put("account_alias", account.getAccountAlias());
+                accountInfo.put("bank_code_std", account.getBankCodeStd());
+                accountInfo.put("bank_code_sub", account.getBankCodeStd() + "001");
+                accountInfo.put("bank_name", account.getBankName());
+                accountInfo.put("savings_bank_name", account.getSavingsBankName());
+                accountInfo.put("account_num_masked", account.getAccountNumMasked());
+                accountInfo.put("account_seq", account.getAccountSeq());
+                accountInfo.put("account_holder_name", account.getAccountHolderName());
+                accountInfo.put("account_holder_type", "P");
+                accountInfo.put("account_type", account.getAccountType());
+                accountInfo.put("inquiry_agree_yn", account.getInquiryAgreeYn());
+                accountInfo.put("inquiry_agree_dtime", account.getInquiryAgreeDtime());
+                accountInfo.put("transfer_agree_yn", account.getTransferAgreeYn());
+                accountInfo.put("transfer_agree_dtime", account.getTransferAgreeDtime());
+                accountInfo.put("payer_num", account.getPayerNum());
+                return accountInfo;
+            })
+            .collect(Collectors.toList());
+        
+        result.put("res_list", resList);
+        
+        // 카드/보험/대출 정보는 빈 목록으로 설정
+        result.put("inquiry_card_cnt", "0");
+        result.put("inquiry_card_list", new ArrayList<>());
+        result.put("inquiry_pay_cnt", "0");
+        result.put("inquiry_pay_list", new ArrayList<>());
+        result.put("inquiry_insurance_cnt", "0");
+        result.put("inquiry_insurance_list", new ArrayList<>());
+        result.put("inquiry_loan_cnt", "0");
+        result.put("inquiry_loan_list", new ArrayList<>());
+        
+        log.info("계좌 매핑 데이터로 응답 생성 완료: userSeqNo={}, 계좌수={}", userSeqNo, accountMappings.size());
+        return result;
     }
     
     /**

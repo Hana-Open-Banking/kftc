@@ -29,28 +29,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
                                    FilterChain filterChain) throws ServletException, IOException {
         
+        String requestPath = request.getRequestURI();
+        log.info("=== JWT 인증 필터 시작 ===");
+        log.info("요청 경로: {}", requestPath);
+        
         try {
             // Authorization 헤더에서 토큰 추출
             String token = extractTokenFromRequest(request);
             
-            if (token != null && jwtTokenProvider.validateToken(token)) {
-                // 토큰에서 사용자 정보 추출
-                String userId = jwtTokenProvider.getUserId(token);
-                String clientId = jwtTokenProvider.getClientId(token);
-                String scope = jwtTokenProvider.getScope(token);
+            if (token != null) {
+                log.info("Bearer 토큰 추출 성공: {}...", token.substring(0, Math.min(20, token.length())));
                 
-                // SecurityContext에 인증 정보 설정
-                Authentication authentication = createAuthentication(userId, clientId, scope, token);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                
-                log.debug("JWT 인증 성공: userId={}, clientId={}, scope={}", userId, clientId, scope);
+                if (jwtTokenProvider.validateToken(token)) {
+                    // 토큰에서 사용자 정보 추출
+                    String userId = jwtTokenProvider.getUserId(token);
+                    String clientId = jwtTokenProvider.getClientId(token);
+                    String scope = jwtTokenProvider.getScope(token);
+                    
+                    log.info("JWT 토큰 검증 성공: userId={}, clientId={}, scope={}", userId, clientId, scope);
+                    
+                    // SecurityContext에 인증 정보 설정
+                    Authentication authentication = createAuthentication(userId, clientId, scope, token);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    
+                    log.info("SecurityContext에 인증 정보 설정 완료");
+                } else {
+                    log.warn("JWT 토큰 검증 실패");
+                }
+            } else {
+                log.warn("Bearer 토큰이 없습니다. Authorization 헤더: {}", request.getHeader("Authorization"));
             }
             
         } catch (Exception e) {
-            log.error("JWT 인증 처리 중 오류 발생: {}", e.getMessage());
+            log.error("JWT 인증 처리 중 오류 발생: {}", e.getMessage(), e);
             SecurityContextHolder.clearContext();
         }
         
+        log.info("=== JWT 인증 필터 종료 ===");
         filterChain.doFilter(request, response);
     }
     
