@@ -16,7 +16,7 @@ public class CardTransactionRequest {
     
     @NotBlank(message = "사용자일련번호는 필수입니다.")
     @JsonProperty("user_seq_no")
-    @Schema(description = "사용자일련번호", example = "U123456789")
+    @Schema(description = "사용자일련번호", example = "1000000001")
     private String userSeqNo;
     
     @NotBlank(message = "카드사 대표코드는 필수입니다.")

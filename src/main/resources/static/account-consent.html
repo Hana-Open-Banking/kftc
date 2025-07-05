@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계좌 연동 동의</title>
+    <script>
+        // 전역 변수 선언
+        let userSeqNo, userCi, sessionId;
+
+        // 페이지 초기화
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('JavaScript 초기화 시작');
+            
+            // URL 파라미터에서 데이터 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            userSeqNo = urlParams.get('userSeqNo');
+            userCi = urlParams.get('userCi');
+            sessionId = urlParams.get('sessionId');
+            
+            console.log('전체 URL:', window.location.href);
+            console.log('URL 파라미터:', {
+                userSeqNo: userSeqNo,
+                userCi: userCi ? userCi.substring(0, 10) + '...' : null,
+                sessionId: sessionId,
+                raw: window.location.search
+            });
+
+            if (userSeqNo && userCi) {
+                console.log('계좌 목록 조회 시작 - 파라미터 확인:', {
+                    userSeqNo: userSeqNo,
+                    userCi: userCi ? userCi.substring(0, 10) + '...' : null
+                });
+                loadAccountList();
+            } else {
+                console.error('필수 파라미터 누락:', {
+                    userSeqNo: !!userSeqNo,
+                    userCi: !!userCi
+                });
+                showError('사용자 정보가 없습니다. 다시 인증해주세요.');
+            }
+        });
+
+        // 전체 선택
+        function selectAll() {
+            console.log('전체 선택 실행');
+            const checkboxes = document.querySelectorAll('#accountList input[type="checkbox"]');
+            checkboxes.forEach(checkbox => checkbox.checked = true);
+        }
+
+        // 전체 해제
+        function deselectAll() {
+            console.log('전체 해제 실행');
+            const checkboxes = document.querySelectorAll('#accountList input[type="checkbox"]');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+        }
+
+        // 계좌 목록 로드
+        function loadAccountList() {
+            console.log('계좌 목록 로드 시작');
+            fetch('/api/phone-verification/discover-accounts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userSeqNo: userSeqNo,
+                    userCi: userCi
+                })
+            })
+            .then(response => {
+                console.log('API 응답 상태:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('API 응답 데이터:', data);
+                console.log('API 응답 상태:', data.status);
+                console.log('API 응답 메시지:', data.message);
+                console.log('API 응답 데이터 내용:', data.data);
+                
+                if (data.status === 200) {
+                    console.log('계좌 목록 표시 시작, institutions 개수:', data.data ? data.data.length : 0);
+                    displayAccountList(data.data);
+                } else {
+                    console.error('API 응답 에러:', data.message);
+                    showError('계좌 정보를 가져오는데 실패했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('API 호출 에러:', error);
+                showError('계좌 정보를 가져오는데 실패했습니다.');
+            });
+        }
+
+        // 계좌 목록 표시
+        function displayAccountList(institutions) {
+            console.log('계좌 목록 표시 시작 - institutions:', institutions);
+            const accountListDiv = document.getElementById('accountList');
+            accountListDiv.innerHTML = '';
+
+            if (!institutions || institutions.length === 0) {
+                console.log('연동 가능한 계좌가 없습니다.');
+                accountListDiv.innerHTML = '<p>연동 가능한 계좌가 없습니다.</p>';
+                return;
+            }
+
+            let totalAccountsAdded = 0;
+
+            institutions.forEach((institution, institutionIndex) => {
+                console.log(`Institution ${institutionIndex}:`, institution);
+                console.log(`Institution ${institutionIndex} accountList:`, institution.accountList);
+                
+                if (institution.accountList && institution.accountList.length > 0) {
+                    console.log(`Institution ${institutionIndex} 계좌 개수:`, institution.accountList.length);
+                    
+                    institution.accountList.forEach((account, accountIndex) => {
+                        console.log(`계좌 ${institutionIndex}-${accountIndex}:`, account);
+                        
+                        const accountDiv = document.createElement('div');
+                        accountDiv.className = 'account-item';
+                        
+                        const accountTypeText = getAccountTypeText(account.accountType);
+                        
+                        accountDiv.innerHTML = `
+                            <input type="checkbox" id="account_${account.fintechUseNum}" 
+                                   value="${account.fintechUseNum}" 
+                                   data-bank-code="${institution.bankCode}"
+                                   data-service-type="${institution.serviceType}">
+                            <div class="account-info">
+                                <div class="account-name">
+                                    ${account.accountAlias || account.accountHolderName}
+                                    <span class="account-type">${accountTypeText}</span>
+                                </div>
+                                <div class="account-details">
+                                    ${account.bankName} | ${account.accountNumMasked}<br>
+                                    예금주: ${account.accountHolderName}
+                                </div>
+                            </div>
+                        `;
+                        
+                        accountListDiv.appendChild(accountDiv);
+                        totalAccountsAdded++;
+                        console.log(`계좌 추가됨: ${account.accountAlias}, 총 ${totalAccountsAdded}개`);
+                    });
+                } else {
+                    console.log(`Institution ${institutionIndex}에 계좌가 없습니다.`);
+                }
+            });
+            
+            console.log('계좌 목록 표시 완료 - 총 계좌 수:', totalAccountsAdded);
+            
+            if (totalAccountsAdded === 0) {
+                accountListDiv.innerHTML = '<p>표시할 수 있는 계좌가 없습니다.</p>';
+            }
+        }
+
+        // 계좌 유형 텍스트 변환
+        function getAccountTypeText(accountType) {
+            switch(accountType) {
+                case '1': return '일반계좌';
+                case '2': return '정기예금';
+                case 'CARD': return '카드';
+                case 'INSURANCE': return '보험';
+                default: return '기타';
+            }
+        }
+
+        // 선택한 계좌 저장
+        function saveSelectedAccounts() {
+            console.log('선택한 계좌 저장 시작');
+            const selectedCheckboxes = document.querySelectorAll('#accountList input[type="checkbox"]:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                alert('연동할 계좌를 선택해주세요.');
+                return;
+            }
+
+            const selectedAccounts = [];
+            selectedCheckboxes.forEach(checkbox => {
+                const accountDiv = checkbox.closest('.account-item');
+                const accountInfo = accountDiv.querySelector('.account-info');
+                const accountName = accountInfo.querySelector('.account-name').textContent.split('\n')[0].trim();
+                const accountDetails = accountInfo.querySelector('.account-details').textContent.split('|');
+                
+                selectedAccounts.push({
+                    fintechUseNum: checkbox.value,
+                    bankCode: checkbox.dataset.bankCode,
+                    serviceType: checkbox.dataset.serviceType,
+                    accountAlias: accountName,
+                    bankName: accountDetails[0].trim(),
+                    accountNumMasked: accountDetails[1].split('\n')[0].trim(),
+                    accountHolderName: accountDetails[1].split('예금주: ')[1].trim()
+                });
+            });
+
+            // 로딩 표시
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+
+            console.log('선택된 계좌 정보:', selectedAccounts);
+
+            // 서버에 선택한 계좌 저장 요청
+            fetch('/api/phone-verification/save-selected-accounts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userSeqNo: userSeqNo,
+                    selectedAccounts: selectedAccounts
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                console.log('계좌 저장 응답:', data);
+                
+                if (data.status === 200) {
+                    showSuccess(`${data.data.savedCount}개의 계좌가 성공적으로 연동되었습니다.`);
+                    
+                    // OAuth 플로우 완료 - 서비스 동의 처리
+                    if (sessionId) {
+                        setTimeout(function() {
+                            completeOAuthFlow();
+                        }, 2000);
+                    }
+                } else {
+                    showError('계좌 연동에 실패했습니다: ' + data.message);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                console.error('Error:', error);
+                showError('계좌 연동 중 오류가 발생했습니다.');
+            });
+        }
+
+        // 성공 메시지 표시
+        function showSuccess(message) {
+            const resultDiv = document.getElementById('result');
+            const messageDiv = document.getElementById('resultMessage');
+            
+            resultDiv.className = 'result success';
+            messageDiv.textContent = message;
+            resultDiv.style.display = 'block';
+        }
+
+        // 에러 메시지 표시
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            const messageDiv = document.getElementById('resultMessage');
+            
+            resultDiv.className = 'result error';
+            messageDiv.textContent = message;
+            resultDiv.style.display = 'block';
+        }
+
+        // OAuth 플로우 완료
+        function completeOAuthFlow() {
+            if (!sessionId) {
+                console.log('sessionId가 없어 OAuth 플로우를 완료할 수 없습니다.');
+                return;
+            }
+
+            console.log('OAuth 플로우 완료 시작');
+            showSuccess('🎉 인증이 완료되었습니다! 클라이언트 앱으로 이동됩니다.');
+            
+            // Form을 사용하여 POST 요청 및 자동 리디렉션 처리
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/oauth/consent';
+            
+            // session_id 파라미터 추가
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'session_id';
+            sessionInput.value = sessionId;
+            form.appendChild(sessionInput);
+            
+            // agreed 파라미터 추가
+            const agreedInput = document.createElement('input');
+            agreedInput.type = 'hidden';
+            agreedInput.name = 'agreed';
+            agreedInput.value = 'true';
+            form.appendChild(agreedInput);
+            
+            // Form을 DOM에 추가하고 제출
+            document.body.appendChild(form);
+            
+            console.log('OAuth 동의 Form 제출 시작');
+            setTimeout(() => {
+                form.submit();
+            }, 2000);
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .account-list {
+            margin: 20px 0;
+        }
+        .account-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        .account-item:hover {
+            background-color: #f8f9fa;
+        }
+        .account-item input[type="checkbox"] {
+            margin-right: 15px;
+            transform: scale(1.2);
+        }
+        .account-info {
+            flex: 1;
+        }
+        .account-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .account-details {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .account-type {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #2196F3;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1976D2;
+        }
+        .btn-secondary {
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .result.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>계좌 연동 동의</h1>
+        
+        <div class="info-box">
+            <strong>안내사항</strong><br>
+            아래 계좌들은 귀하의 휴대폰 인증을 통해 확인된 계좌입니다.<br>
+            연동을 원하는 계좌를 선택하신 후 '선택한 계좌 연동' 버튼을 클릭해주세요.
+        </div>
+
+        <div id="accountList" class="account-list">
+            <!-- 계좌 목록이 여기에 동적으로 추가됩니다 -->
+        </div>
+
+        <div class="buttons">
+            <button class="btn btn-secondary" onclick="selectAll()">전체 선택</button>
+            <button class="btn btn-secondary" onclick="deselectAll()">전체 해제</button>
+            <button class="btn btn-primary" onclick="saveSelectedAccounts()">선택한 계좌 연동</button>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>선택한 계좌를 저장하고 있습니다...</p>
+        </div>
+
+        <div id="result" class="result">
+            <p id="resultMessage"></p>
+        </div>
+    </div>
+</body>
+</html> 
