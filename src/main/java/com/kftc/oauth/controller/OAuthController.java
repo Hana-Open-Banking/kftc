@@ -210,6 +210,48 @@ public class OAuthController {
     }
     
     /**
+     * 계좌 없이 동의 처리 (건너뛰기)
+     */
+    @Operation(summary = "계좌 없이 동의 처리", description = "계좌 정보 없이 서비스 이용 동의 화면으로 넘어갑니다.")
+    @PostMapping("/consent/skip-accounts")
+    public ResponseEntity<String> processConsentSkipAccounts(
+            @Parameter(description = "인증 세션 ID", required = true)
+            @RequestParam("session_id") String sessionId) {
+        
+        log.info("계좌 없이 동의 처리: sessionId={}", sessionId);
+        
+        try {
+            // 세션 검증
+            AuthSession session = authSessions.get(sessionId);
+            if (session == null) {
+                log.error("유효하지 않은 세션: sessionId={}", sessionId);
+                throw new IllegalArgumentException("유효하지 않은 세션입니다.");
+            }
+            
+            if (!session.isPhoneVerified()) {
+                log.error("휴대폰 인증 미완료: sessionId={}", sessionId);
+                throw new IllegalArgumentException("휴대폰 인증이 완료되지 않았습니다.");
+            }
+            
+            if (session.getUserId() == null || session.getUserId().isEmpty()) {
+                log.error("사용자 ID 없음: sessionId={}", sessionId);
+                throw new IllegalArgumentException("사용자 ID가 설정되지 않았습니다.");
+            }
+            
+            // 계좌 없이 동의 화면 생성
+            String consentHtml = generateConsentHtmlWithoutAccounts(sessionId, session);
+            
+            return ResponseEntity.ok()
+                    .header("Content-Type", "text/html; charset=UTF-8")
+                    .body(consentHtml);
+                    
+        } catch (Exception e) {
+            log.error("계좌 없이 동의 처리 중 오류 발생: sessionId={}", sessionId, e);
+            throw new RuntimeException("동의 처리 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 서비스 이용 동의 처리
      */
     @Operation(summary = "서비스 이용 동의 처리", description = "사용자 동의 후 Authorization Code를 발급하고 리디렉트합니다.")
@@ -607,6 +649,195 @@ public class OAuthController {
     }
     
     
+    private String generateConsentHtmlWithoutAccounts(String sessionId, AuthSession session) {
+        return """
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서비스 이용 동의 - 금융결제원</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .notice {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .notice h3 {
+            color: #1976d2;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .notice p {
+            margin: 5px 0;
+            color: #424242;
+            font-size: 14px;
+        }
+        .scope-list {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .scope-list h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        .scope-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .scope-list li {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #555;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏦 서비스 이용 동의</h1>
+        </div>
+        
+        <div class="content">
+            <div class="notice">
+                <h3>📢 안내</h3>
+                <p>계좌 정보가 발견되지 않았습니다.</p>
+                <p>계좌 연동 없이 서비스를 이용하실 수 있습니다.</p>
+                <p>나중에 필요시 계좌를 추가로 등록하실 수 있습니다.</p>
+            </div>
+
+            <div class="scope-list">
+                <h4>🔐 요청된 권한</h4>
+                <ul>
+                    %s
+                </ul>
+            </div>
+
+            <div class="notice">
+                <h3>⚠️ 주의사항</h3>
+                <p>• 위 권한을 승인하시면 해당 서비스의 접근이 허용됩니다.</p>
+                <p>• 개인정보 보호를 위해 필요한 최소한의 권한만 요청합니다.</p>
+                <p>• 언제든지 권한을 철회할 수 있습니다.</p>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button type="button" class="btn-secondary" onclick="disagree()">동의 안함</button>
+            <button type="button" class="btn-primary" onclick="agree()">동의</button>
+        </div>
+    </div>
+
+    <script>
+        function agree() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/oauth/consent';
+            
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'session_id';
+            sessionInput.value = '%s';
+            form.appendChild(sessionInput);
+            
+            const agreeInput = document.createElement('input');
+            agreeInput.type = 'hidden';
+            agreeInput.name = 'agreed';
+            agreeInput.value = 'true';
+            form.appendChild(agreeInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function disagree() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/oauth/consent';
+            
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'session_id';
+            sessionInput.value = '%s';
+            form.appendChild(sessionInput);
+            
+            const agreeInput = document.createElement('input');
+            agreeInput.type = 'hidden';
+            agreeInput.name = 'agreed';
+            agreeInput.value = 'false';
+            form.appendChild(agreeInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+</body>
+</html>
+""".formatted(generateScopeListHtml(session.getScope()), sessionId, sessionId);
+    }
+
     private String generateConsentHtml(String sessionId, AuthSession session) {
         log.debug("동의 페이지 HTML 생성: sessionId={}, session={}", sessionId, session);
         

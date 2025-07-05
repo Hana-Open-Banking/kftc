@@ -96,11 +96,22 @@
         function displayAccountList(institutions) {
             console.log('계좌 목록 표시 시작 - institutions:', institutions);
             const accountListDiv = document.getElementById('accountList');
+            const buttonsDiv = document.querySelector('.buttons');
             accountListDiv.innerHTML = '';
 
             if (!institutions || institutions.length === 0) {
                 console.log('연동 가능한 계좌가 없습니다.');
-                accountListDiv.innerHTML = '<p>연동 가능한 계좌가 없습니다.</p>';
+                accountListDiv.innerHTML = `
+                    <div class="no-accounts-message">
+                        <p>🏦 연동 가능한 계좌가 발견되지 않았습니다.</p>
+                        <p>계좌 연동 없이 서비스를 이용하실 수 있습니다.</p>
+                    </div>
+                `;
+                
+                // 버튼을 "계좌 없이 진행"으로 변경
+                buttonsDiv.innerHTML = `
+                    <button class="btn btn-primary" onclick="proceedWithoutAccounts()">계좌 없이 진행</button>
+                `;
                 return;
             }
 
@@ -150,7 +161,27 @@
             console.log('계좌 목록 표시 완료 - 총 계좌 수:', totalAccountsAdded);
             
             if (totalAccountsAdded === 0) {
-                accountListDiv.innerHTML = '<p>표시할 수 있는 계좌가 없습니다.</p>';
+                accountListDiv.innerHTML = `
+                    <div class="no-accounts-message">
+                        <p>🏦 표시할 수 있는 계좌가 없습니다.</p>
+                        <p>계좌 연동 없이 서비스를 이용하실 수 있습니다.</p>
+                    </div>
+                `;
+                
+                // 버튼을 "계좌 없이 진행"으로 변경
+                const buttonsDiv = document.querySelector('.buttons');
+                buttonsDiv.innerHTML = `
+                    <button class="btn btn-primary" onclick="proceedWithoutAccounts()">계좌 없이 진행</button>
+                `;
+            } else {
+                // 계좌가 있을 때 버튼에 "계좌 없이 진행" 옵션 추가
+                const buttonsDiv = document.querySelector('.buttons');
+                buttonsDiv.innerHTML = `
+                    <button class="btn btn-secondary" onclick="selectAll()">전체 선택</button>
+                    <button class="btn btn-secondary" onclick="deselectAll()">전체 해제</button>
+                    <button class="btn btn-primary" onclick="saveSelectedAccounts()">선택한 계좌 연동</button>
+                    <button class="btn btn-outline" onclick="proceedWithoutAccounts()">계좌 없이 진행</button>
+                `;
             }
         }
 
@@ -253,6 +284,42 @@
             resultDiv.className = 'result error';
             messageDiv.textContent = message;
             resultDiv.style.display = 'block';
+        }
+
+        // 계좌 없이 진행
+        function proceedWithoutAccounts() {
+            if (!sessionId) {
+                console.log('sessionId가 없어 진행할 수 없습니다.');
+                showError('세션 정보가 없습니다. 다시 인증해주세요.');
+                return;
+            }
+
+            console.log('계좌 없이 진행 시작');
+            
+            // 로딩 표시
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+
+            // Form을 사용하여 POST 요청
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/oauth/consent/skip-accounts';
+            
+            // session_id 파라미터 추가
+            const sessionInput = document.createElement('input');
+            sessionInput.type = 'hidden';
+            sessionInput.name = 'session_id';
+            sessionInput.value = sessionId;
+            form.appendChild(sessionInput);
+            
+            // Form을 DOM에 추가하고 제출
+            document.body.appendChild(form);
+            
+            console.log('계좌 없이 동의 화면으로 이동');
+            showSuccess('계좌 없이 서비스 동의 화면으로 이동합니다...');
+            setTimeout(() => {
+                form.submit();
+            }, 1000);
         }
 
         // OAuth 플로우 완료
@@ -389,6 +456,15 @@
         .btn-secondary:hover {
             background-color: #e0e0e0;
         }
+        .btn-outline {
+            background-color: transparent;
+            color: #2196F3;
+            border: 2px solid #2196F3;
+        }
+        .btn-outline:hover {
+            background-color: #2196F3;
+            color: white;
+        }
         .loading {
             display: none;
             text-align: center;
@@ -422,6 +498,23 @@
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        .no-accounts-message {
+            text-align: center;
+            padding: 40px 20px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .no-accounts-message p {
+            margin: 10px 0;
+            color: #856404;
+            font-size: 16px;
+        }
+        .no-accounts-message p:first-child {
+            font-weight: bold;
+            font-size: 18px;
         }
     </style>
 </head>
