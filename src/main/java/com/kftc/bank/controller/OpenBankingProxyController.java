@@ -201,7 +201,7 @@ public class OpenBankingProxyController {
     public ResponseEntity<BasicResponse> withdrawTransfer(@RequestBody TransferRequest request) {
         
         String fintechUseNum = request.getEffectiveFintechUseNum();
-        log.info("출금이체 API 호출: fintechUseNum={}, 이체금액={}", fintechUseNum, request.getTranAmtAsString());
+        log.info("출금이체 API 호출: fintechUseNum={}, 이체금액={}", fintechUseNum, request.getTranAmt());
         
         try {
             // 인증된 사용자 정보 가져오기
@@ -244,7 +244,7 @@ public class OpenBankingProxyController {
     public ResponseEntity<BasicResponse> depositTransfer(@RequestBody TransferRequest request) {
         
         String fintechUseNum = request.getEffectiveFintechUseNum();
-        log.info("입금이체 API 호출: fintechUseNum={}, 이체금액={}", fintechUseNum, request.getTranAmtAsString());
+        log.info("입금이체 API 호출: fintechUseNum={}, 이체금액={}", fintechUseNum, request.getTranAmt());
         
         try {
             // 인증된 사용자 정보 가져오기
