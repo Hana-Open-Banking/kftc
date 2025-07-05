@@ -4,6 +4,7 @@ import com.kftc.bank.service.BankService;
 import com.kftc.bank.common.BankAccountInfo;
 import com.kftc.bank.common.BankCode;
 import com.kftc.bank.common.TransferRequest;
+import com.kftc.bank.common.TransferResponse;
 import com.kftc.common.dto.BasicResponse;
 import com.kftc.oauth.config.JwtAuthenticationFilter;
 import io.swagger.v3.oas.annotations.Operation;
@@ -194,75 +195,89 @@ public class OpenBankingProxyController {
         }
     }
     
-    @PostMapping("/v2.0/transfer/withdraw/{fintech_use_num}")
-    @Operation(summary = "출금이체", description = "특정 계좌에서 출금이체를 실행합니다.",
+    @PostMapping("/v2.0/transfer/withdraw/fin_num")
+    @Operation(summary = "출금이체", description = "출금이체를 실행합니다.",
                security = @SecurityRequirement(name = "BearerAuth"))
-    public ResponseEntity<BasicResponse> withdrawTransfer(
-            @Parameter(description = "핀테크이용번호") @PathVariable("fintech_use_num") String fintechUseNum,
-            @RequestBody TransferRequest request) {
+    public ResponseEntity<BasicResponse> withdrawTransfer(@RequestBody TransferRequest request) {
         
-        log.info("출금이체 API 호출: fintechUseNum={}, amount={}", fintechUseNum, request.getAmount());
+        String fintechUseNum = request.getEffectiveFintechUseNum();
+        log.info("출금이체 API 호출: fintechUseNum={}, 이체금액={}", fintechUseNum, request.getTranAmtAsString());
         
         try {
             // 인증된 사용자 정보 가져오기
             JwtAuthenticationFilter.JwtAuthenticatedUser authenticatedUser = getAuthenticatedUser();
             
-            BankAccountInfo result = bankService.withdrawTransfer(fintechUseNum, request, authenticatedUser.getAccessToken());
+            // 출금이체 실행
+            TransferResponse transferResponse = bankService.withdrawTransfer(fintechUseNum, request, authenticatedUser.getAccessToken());
             
             BasicResponse response = BasicResponse.builder()
-                .status(200)
-                .message("출금이체가 성공적으로 완료되었습니다.")
-                .data(result)
+                .status(transferResponse.getRspCode().equals("A0000") ? 200 : 400)
+                .message(transferResponse.getRspMessage())
+                .data(transferResponse)
                 .build();
             
-            return ResponseEntity.ok(response);
+            if (transferResponse.getRspCode().equals("A0000")) {
+                log.info("출금이체 성공: fintechUseNum={}, 거래고유번호={}", fintechUseNum, transferResponse.getBankTranId());
+                return ResponseEntity.ok(response);
+            } else {
+                log.error("출금이체 실패: fintechUseNum={}, 오류코드={}, 오류메시지={}", 
+                    fintechUseNum, transferResponse.getRspCode(), transferResponse.getRspMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
             
         } catch (Exception e) {
-            log.error("출금이체 실패: fintechUseNum={}, error={}", fintechUseNum, e.getMessage());
+            log.error("출금이체 실패: fintechUseNum={}, error={}", fintechUseNum, e.getMessage(), e);
             
             BasicResponse response = BasicResponse.builder()
-                .status(400)
-                .message("출금이체에 실패했습니다: " + e.getMessage())
+                .status(500)
+                .message("출금이체 처리 중 오류가 발생했습니다: " + e.getMessage())
                 .data(null)
                 .build();
             
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.internalServerError().body(response);
         }
     }
     
-    @PostMapping("/v2.0/transfer/deposit/{fintech_use_num}")
-    @Operation(summary = "입금이체", description = "특정 계좌로 입금이체를 실행합니다.",
+    @PostMapping("/v2.0/transfer/deposit/fin_num")
+    @Operation(summary = "입금이체", description = "입금이체를 실행합니다.",
                security = @SecurityRequirement(name = "BearerAuth"))
-    public ResponseEntity<BasicResponse> depositTransfer(
-            @Parameter(description = "핀테크이용번호") @PathVariable("fintech_use_num") String fintechUseNum,
-            @RequestBody TransferRequest request) {
+    public ResponseEntity<BasicResponse> depositTransfer(@RequestBody TransferRequest request) {
         
-        log.info("입금이체 API 호출: fintechUseNum={}, amount={}", fintechUseNum, request.getAmount());
+        String fintechUseNum = request.getEffectiveFintechUseNum();
+        log.info("입금이체 API 호출: fintechUseNum={}, 이체금액={}", fintechUseNum, request.getTranAmtAsString());
         
         try {
             // 인증된 사용자 정보 가져오기
             JwtAuthenticationFilter.JwtAuthenticatedUser authenticatedUser = getAuthenticatedUser();
             
-            BankAccountInfo result = bankService.depositTransfer(fintechUseNum, request, authenticatedUser.getAccessToken());
+            // 입금이체 실행
+            TransferResponse transferResponse = bankService.depositTransfer(fintechUseNum, request, authenticatedUser.getAccessToken());
             
             BasicResponse response = BasicResponse.builder()
-                .status(200)
-                .message("입금이체가 성공적으로 완료되었습니다.")
-                .data(result)
+                .status(transferResponse.getRspCode().equals("A0000") ? 200 : 400)
+                .message(transferResponse.getRspMessage())
+                .data(transferResponse)
                 .build();
             
-            return ResponseEntity.ok(response);
+            if (transferResponse.getRspCode().equals("A0000")) {
+                log.info("입금이체 성공: fintechUseNum={}, 거래고유번호={}", fintechUseNum, transferResponse.getBankTranId());
+                return ResponseEntity.ok(response);
+            } else {
+                log.error("입금이체 실패: fintechUseNum={}, 오류코드={}, 오류메시지={}", 
+                    fintechUseNum, transferResponse.getRspCode(), transferResponse.getRspMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
             
         } catch (Exception e) {
-            log.error("입금이체 실패: fintechUseNum={}, error={}", fintechUseNum, e.getMessage());
+            log.error("입금이체 실패: fintechUseNum={}, error={}", fintechUseNum, e.getMessage(), e);
             
             BasicResponse response = BasicResponse.builder()
-                .status(400)
-                .message("입금이체에 실패했습니다: " + e.getMessage())
+                .status(500)
+                .message("입금이체 처리 중 오류가 발생했습니다: " + e.getMessage())
                 .data(null)
                 .build();
             
-            return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.internalServerError().body(response);
         }
     }
     
