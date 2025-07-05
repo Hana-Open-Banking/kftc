@@ -7,22 +7,3 @@ openbanking:
     code: "097"  # 금융결제원 기관코드
     name: "금융결제원"
   server-url:
-
-# OAuth 토큰 설정
-oauth:
-  token:
-    jwt-secret: ${JWT_SECRET:your-jwt-secret-key-must-be-at-least-256-bits-long-for-security}
-    access-token-validity: ${ACCESS_TOKEN_VALIDITY:3600}  # 1시간 (초 단위)
-    refresh-token-validity: ${REFRESH_TOKEN_VALIDITY:604800}  # 7일 (초 단위)
-
-# 금융기관 서버 URL 설정
-financial:
-  institutions:
-    shinhan-bank:
-      base-url: ${SHINHAN_BANK_BASE_URL:http://localhost:8082}
-    kookmin-card:
-      base-url: ${KOOKMIN_CARD_BASE_URL:http://localhost:8083}
-    hyundai-capital:
-      base-url: ${HYUNDAI_CAPITAL_BASE_URL:http://localhost:8085}
-    samsung-fire:
-      base-url: ${SAMSUNG_FIRE_BASE_URL:http://localhost:8084}
