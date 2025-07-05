@@ -46,6 +46,11 @@ public class PhoneVerificationController {
     public ResponseEntity<BasicResponse> verifyCode(
             @Valid @RequestBody PhoneVerificationConfirmRequest request) {
         
+        log.info("📱 ============= 휴대폰 인증 코드 확인 엔드포인트 호출됨 =============");
+        log.info("📱 요청 데이터: phoneNumber={}, userName={}, socialSecurityNumber={}***", 
+            request.getPhoneNumber(), request.getUserName(), 
+            request.getSocialSecurityNumber() != null ? request.getSocialSecurityNumber().substring(0, 6) : "null");
+        
         // PASS 인증 (사용자 정보가 있으면 CI 포함 응답, 없으면 기본 응답)
         Object result = phoneVerificationService.verifyCodeWithPassAuth(
                 request.getPhoneNumber(), 
@@ -53,6 +58,8 @@ public class PhoneVerificationController {
                 request.getUserName(),
                 request.getSocialSecurityNumber()
         );
+        
+        log.info("📱 phoneVerificationService.verifyCodeWithPassAuth 결과: {}", result);
         
         // 응답 메시지 동적 설정
         String message;
@@ -67,6 +74,8 @@ public class PhoneVerificationController {
                 .message(message)
                 .data(result)
                 .build();
+        
+        log.info("📱 클라이언트로 반환할 응답: {}", response);
         
         return ResponseEntity.ok(response);
     }
@@ -109,6 +118,63 @@ public class PhoneVerificationController {
                 .status(200)
                 .message("휴대폰 인증 상태 조회 성공")
                 .data(isVerified)
+                .build();
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(summary = "계좌 목록 조회", 
+               description = "휴대폰 인증 후 연동 가능한 계좌 목록을 조회합니다.")
+    @PostMapping("/discover-accounts")
+    public ResponseEntity<BasicResponse> discoverAccounts(
+            @RequestBody Map<String, Object> request) {
+        
+        log.info("🎯 ============= 계좌 목록 조회 엔드포인트 호출됨 =============");
+        
+        String userSeqNo = (String) request.get("userSeqNo");
+        String userCi = (String) request.get("userCi");
+        
+        log.info("🎯 계좌 목록 조회 요청: userSeqNo={}, userCi={}...", 
+            userSeqNo, userCi != null ? userCi.substring(0, 10) : "null");
+        log.info("🎯 전체 요청 데이터: {}", request);
+        
+        List<Map<String, Object>> institutions = phoneVerificationService.discoverAvailableFinancialInstitutions(
+            userSeqNo, userCi);
+        
+        log.info("🎯 컨트롤러에서 받은 기관 목록: 크기={}, 내용={}", 
+            institutions != null ? institutions.size() : 0, institutions);
+        
+        BasicResponse response = BasicResponse.builder()
+                .status(200)
+                .message("계좌 목록 조회가 완료되었습니다.")
+                .data(institutions)
+                .build();
+        
+        log.info("🎯 클라이언트로 반환할 응답: {}", response);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @Operation(summary = "선택한 계좌들 DB 저장", 
+               description = "사용자가 선택한 계좌들만 DB에 저장합니다.")
+    @PostMapping("/save-selected-accounts")
+    public ResponseEntity<BasicResponse> saveSelectedAccounts(
+            @RequestBody Map<String, Object> request) {
+        
+        String userSeqNo = (String) request.get("userSeqNo");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> selectedAccounts = (List<Map<String, Object>>) request.get("selectedAccounts");
+        
+        log.info("선택한 계좌 저장 요청: userSeqNo={}, selectedAccountsCount={}", 
+            userSeqNo, selectedAccounts != null ? selectedAccounts.size() : 0);
+        
+        Map<String, Object> result = phoneVerificationService.saveSelectedAccounts(
+            userSeqNo, selectedAccounts);
+        
+        BasicResponse response = BasicResponse.builder()
+                .status(200)
+                .message("선택한 계좌들이 저장되었습니다.")
+                .data(result)
                 .build();
         
         return ResponseEntity.ok(response);
