@@ -22,7 +22,7 @@ public class CardCompanyService {
     private final RestTemplate restTemplate;
     private final UserService userService;
     
-    @Value("${card.company.kb.url}")
+    @Value("${financial.institutions.kookmin-card.base-url}")
     private String kbCardServerUrl;
     
     /**
