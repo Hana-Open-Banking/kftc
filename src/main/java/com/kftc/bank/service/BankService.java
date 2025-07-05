@@ -684,14 +684,257 @@ public class BankService {
             .build();
     }
     
-    public BankAccountInfo withdrawTransfer(String fintechUseNum, TransferRequest request, String accessToken) {
-        log.warn("레거시 withdrawTransfer 메서드 호출됨 - null 반환");
-        return null;
+    /**
+     * 출금이체 처리
+     */
+    public TransferResponse withdrawTransfer(String fintechUseNum, TransferRequest request, String accessToken) {
+        log.info("=== 출금이체 시작 ===");
+        log.info("핀테크이용번호: {}, 이체금액: {}", fintechUseNum, request.getTranAmtAsString());
+        
+        try {
+            // 1. 계좌 매핑 정보 조회
+            Optional<AccountMapping> accountMappingOpt = accountMappingRepository.findByFintechUseNum(fintechUseNum);
+            if (!accountMappingOpt.isPresent()) {
+                log.error("계좌 매핑 정보를 찾을 수 없습니다: {}", fintechUseNum);
+                return TransferResponse.error(generateApiTranId(), "A0023", "등록되지 않은 핀테크이용번호입니다");
+            }
+            
+            AccountMapping accountMapping = accountMappingOpt.get();
+            String bankCode = accountMapping.getBankCodeStd();
+            
+            // 2. 금융기관 baseUrl 확인
+            String baseUrl = getInstitutionBaseUrl(bankCode);
+            if (baseUrl == null) {
+                log.error("지원하지 않는 은행코드: {}", bankCode);
+                return TransferResponse.error(generateApiTranId(), "A0024", "지원하지 않는 금융기관입니다");
+            }
+            
+            // 3. 이체 요청 데이터 생성
+            String apiTranId = generateApiTranId();
+            String bankTranId = generateBankTranId();
+            
+            Map<String, Object> transferData = createWithdrawTransferData(request, bankTranId, accountMapping);
+            
+            // 4. 금융기관 API 호출
+            String transferUrl = baseUrl + "/v2.0/transfer/withdraw/fin_num";
+            
+            HttpHeaders headers = createBankApiHeaders(accessToken, bankCode);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transferData, headers);
+            
+            log.info("출금이체 API 호출: url={}, data={}", transferUrl, transferData);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                transferUrl, HttpMethod.POST, entity, Map.class);
+            
+            // 5. 응답 처리
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+                log.info("출금이체 성공: {}", responseBody);
+                
+                return createSuccessTransferResponse(apiTranId, bankTranId, fintechUseNum, 
+                    request, responseBody, accountMapping);
+            } else {
+                log.error("출금이체 실패: status={}, body={}", response.getStatusCode(), response.getBody());
+                return TransferResponse.error(apiTranId, "A0025", "출금이체 처리 실패");
+            }
+            
+        } catch (Exception e) {
+            log.error("출금이체 중 오류 발생: fintechUseNum={}, error={}", fintechUseNum, e.getMessage(), e);
+            return TransferResponse.error(generateApiTranId(), "A0026", "출금이체 처리 중 오류가 발생했습니다");
+        }
     }
     
-    public BankAccountInfo depositTransfer(String fintechUseNum, TransferRequest request, String accessToken) {
-        log.warn("레거시 depositTransfer 메서드 호출됨 - null 반환");
-        return null;
+    /**
+     * 입금이체 처리
+     */
+    public TransferResponse depositTransfer(String fintechUseNum, TransferRequest request, String accessToken) {
+        log.info("=== 입금이체 시작 ===");
+        log.info("핀테크이용번호: {}, 이체금액: {}", fintechUseNum, request.getTranAmtAsString());
+        
+        try {
+            // 1. 계좌 매핑 정보 조회
+            Optional<AccountMapping> accountMappingOpt = accountMappingRepository.findByFintechUseNum(fintechUseNum);
+            if (!accountMappingOpt.isPresent()) {
+                log.error("계좌 매핑 정보를 찾을 수 없습니다: {}", fintechUseNum);
+                return TransferResponse.error(generateApiTranId(), "A0023", "등록되지 않은 핀테크이용번호입니다");
+            }
+            
+            AccountMapping accountMapping = accountMappingOpt.get();
+            String bankCode = accountMapping.getBankCodeStd();
+            
+            // 2. 금융기관 baseUrl 확인
+            String baseUrl = getInstitutionBaseUrl(bankCode);
+            if (baseUrl == null) {
+                log.error("지원하지 않는 은행코드: {}", bankCode);
+                return TransferResponse.error(generateApiTranId(), "A0024", "지원하지 않는 금융기관입니다");
+            }
+            
+            // 3. 이체 요청 데이터 생성
+            String apiTranId = generateApiTranId();
+            String bankTranId = generateBankTranId();
+            
+            Map<String, Object> transferData = createDepositTransferData(request, bankTranId, accountMapping);
+            
+            // 4. 금융기관 API 호출
+            String transferUrl = baseUrl + "/v2.0/transfer/deposit/fin_num";
+            
+            HttpHeaders headers = createBankApiHeaders(accessToken, bankCode);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transferData, headers);
+            
+            log.info("입금이체 API 호출: url={}, data={}", transferUrl, transferData);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                transferUrl, HttpMethod.POST, entity, Map.class);
+            
+            // 5. 응답 처리
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+                log.info("입금이체 성공: {}", responseBody);
+                
+                return createSuccessTransferResponse(apiTranId, bankTranId, fintechUseNum, 
+                    request, responseBody, accountMapping);
+            } else {
+                log.error("입금이체 실패: status={}, body={}", response.getStatusCode(), response.getBody());
+                return TransferResponse.error(apiTranId, "A0025", "입금이체 처리 실패");
+            }
+            
+        } catch (Exception e) {
+            log.error("입금이체 중 오류 발생: fintechUseNum={}, error={}", fintechUseNum, e.getMessage(), e);
+            return TransferResponse.error(generateApiTranId(), "A0026", "입금이체 처리 중 오류가 발생했습니다");
+        }
+    }
+    
+    /**
+     * 출금이체 요청 데이터 생성
+     */
+    private Map<String, Object> createWithdrawTransferData(TransferRequest request, String bankTranId, AccountMapping accountMapping) {
+        Map<String, Object> data = new HashMap<>();
+        
+        // 공통 헤더 정보
+        data.put("bank_tran_id", bankTranId);
+        data.put("cntr_account_type", "N"); // 계좌구분 (N: 계좌번호)
+        data.put("cntr_account_num", accountMapping.getAccountNum());
+        data.put("dps_print_content", request.getEffectivePrintContent());
+        
+        // 핀테크이용번호 (Body에 포함)
+        data.put("fintech_use_num", request.getEffectiveFintechUseNum());
+        
+        // 이체 금액 정보
+        data.put("tran_amt", request.getTranAmtAsString());
+        data.put("tran_dtime", getCurrentDateTime());
+        
+        // 출금 고객 정보
+        data.put("req_client_name", request.getReqClientName() != null ? request.getReqClientName() : accountMapping.getAccountHolderName());
+        data.put("req_client_bank_code", accountMapping.getBankCodeStd());
+        data.put("req_client_account_num", accountMapping.getAccountNum());
+        data.put("req_client_num", request.getReqClientNum() != null ? request.getReqClientNum() : "");
+        
+        // 수취인 정보
+        data.put("recv_client_name", request.getEffectiveRecvClientName());
+        data.put("recv_client_bank_code", request.getEffectiveBankCode());
+        data.put("recv_client_account_num", request.getEffectiveAccountNumber());
+        
+        // 기타 정보
+        data.put("transfer_purpose", request.getEffectiveTransferPurpose());
+        data.put("recv_client_num", request.getRecvClientNum() != null ? request.getRecvClientNum() : "");
+        data.put("req_from_offline_yn", request.getReqFromOfflineYn() != null ? request.getReqFromOfflineYn() : "N");
+        
+        return data;
+    }
+    
+    /**
+     * 입금이체 요청 데이터 생성
+     */
+    private Map<String, Object> createDepositTransferData(TransferRequest request, String bankTranId, AccountMapping accountMapping) {
+        Map<String, Object> data = new HashMap<>();
+        
+        // 공통 헤더 정보
+        data.put("bank_tran_id", bankTranId);
+        data.put("cntr_account_type", "N"); // 계좌구분 (N: 계좌번호)
+        data.put("cntr_account_num", accountMapping.getAccountNum());
+        data.put("dps_print_content", request.getEffectivePrintContent());
+        
+        // 핀테크이용번호 (Body에 포함)
+        data.put("fintech_use_num", request.getEffectiveFintechUseNum());
+        
+        // 이체 금액 정보
+        data.put("tran_amt", request.getTranAmtAsString());
+        data.put("tran_dtime", getCurrentDateTime());
+        
+        // 입금 고객 정보 (수취인)
+        data.put("recv_client_name", accountMapping.getAccountHolderName());
+        data.put("recv_client_bank_code", accountMapping.getBankCodeStd());
+        data.put("recv_client_account_num", accountMapping.getAccountNum());
+        
+        // 송금인 정보
+        data.put("req_client_name", request.getReqClientName() != null ? request.getReqClientName() : "송금인");
+        data.put("req_client_bank_code", request.getReqClientBankCode() != null ? request.getReqClientBankCode() : "");
+        data.put("req_client_account_num", request.getReqClientAccountNum() != null ? request.getReqClientAccountNum() : "");
+        data.put("req_client_num", request.getReqClientNum() != null ? request.getReqClientNum() : "");
+        
+        // 기타 정보
+        data.put("transfer_purpose", request.getEffectiveTransferPurpose());
+        data.put("req_from_offline_yn", request.getReqFromOfflineYn() != null ? request.getReqFromOfflineYn() : "N");
+        
+        return data;
+    }
+    
+    /**
+     * 성공 응답 생성
+     */
+    private TransferResponse createSuccessTransferResponse(String apiTranId, String bankTranId, String fintechUseNum, 
+                                                         TransferRequest request, Map<String, Object> responseBody, AccountMapping accountMapping) {
+        
+        // 응답에서 잔액 추출
+        String balanceAmt = "0";
+        if (responseBody.containsKey("balance_amt")) {
+            balanceAmt = responseBody.get("balance_amt").toString();
+        } else if (responseBody.containsKey("data")) {
+            Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+            if (data != null && data.containsKey("balance_amt")) {
+                balanceAmt = data.get("balance_amt").toString();
+            }
+        }
+        
+        return TransferResponse.builder()
+            .apiTranId(apiTranId)
+            .apiTranDtm(getCurrentDateTime())
+            .rspCode("A0000")
+            .rspMessage("정상처리되었습니다")
+            .bankTranId(bankTranId)
+            .bankTranDate(getCurrentDate())
+            .bankCodeStd(accountMapping.getBankCodeStd())
+            .bankName(getBankName(accountMapping.getBankCodeStd()))
+            .fintechUseNum(fintechUseNum)
+            .accountNumMasked(accountMapping.getAccountNumMasked())
+            .accountHolderName(accountMapping.getAccountHolderName())
+            .tranAmt(request.getTranAmtAsString())
+            .balanceAmt(balanceAmt)
+            .availableAmt(balanceAmt)
+            .reqClientName(request.getReqClientName())
+            .reqClientBankCode(request.getReqClientBankCode())
+            .reqClientAccountNum(request.getReqClientAccountNum())
+            .recvClientName(request.getEffectiveRecvClientName())
+            .recvClientBankCode(request.getEffectiveBankCode())
+            .recvClientAccountNum(request.getEffectiveAccountNumber())
+            .transferPurpose(request.getEffectiveTransferPurpose())
+            .tranDtime(getCurrentDateTime())
+            .printContent(request.getEffectivePrintContent())
+            .bankRspCode("000")
+            .bankRspMessage("정상처리")
+            .build();
+    }
+    
+    /**
+     * API 거래고유번호 생성
+     */
+    private String generateApiTranId() {
+        return "API" + System.currentTimeMillis() + String.format("%03d", new Random().nextInt(1000));
+    }
+    
+    private String getCurrentDate() {
+        return java.time.LocalDate.now().format(
+            java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
     }
     
     public BankAccountInfo verifyAccountRealName(String bankCode, String accountNum, String accessToken) {
